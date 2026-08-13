@@ -167,6 +167,26 @@ npm install --registry=https://registry.npmjs.org/
   - On failure: return error to caller — never silent empty success
   - Product behavior: see project requirements doc
 
+## Weather and zodiac: rate limits and decoupling
+
+Pandorium MCP rate-limits aggressively. Over the limit it returns HTTP 429. The body is **not** JSON-RPC; it is `{"success":false,"error":"Too many requests","retryAfter":132}`. The window is often measured in minutes. In a prior project, tests hit live MCP in a tight loop; by the time development finished the upstream was already limited and the product could not be used.
+
+**Pipeline**
+
+- Weather (Open-Meteo) and zodiac (Pandorium) run in parallel and do not wait on each other; outfit text may generate before weather returns
+- Do not put `weather` in the zodiac request `useEffect` deps — a late weather response fires MCP→LLM a second time and burns the quota
+- For the same profile on the same day, natal chart and transits at most once each; never auto-retry 429 (wait for `retryAfter`, then only on user action)
+
+**Errors**
+
+- For a rate-limit body, check `success === false` first and show `retryAfter` to the user
+- Do not parse it as JSON-RPC `error.message` (it is `undefined`, and the UI becomes an empty "MCP error")
+
+**Tests**
+
+- Unit / integration / CI use fixtures; do not call Pandorium over the network
+- Live smoke: at least 30 seconds between calls; do not use live MCP as everyday regression during development
+
 ## Environment
 
 Copy keys into `.env.local` (gitignored; do not commit). Do not hardcode in source. Spec lists **env codes only** — fill values locally.
@@ -251,6 +271,7 @@ Cross-check when implementing against the project requirements doc:
 | **Image (OpenAI)** | Documented sizes and `quality: low` only when applicable; never silent image failure; see Performance tuning under OpenAI Image |
 | **Maps** | Single server `GOOGLE_MAPS_API_KEY` — no `NEXT_PUBLIC_*` |
 | **Tripadvisor** | Terra host only; flatten localized strings before UI |
+| **Pandorium** | Strict rate limits; weather and zodiac in parallel; do not hammer live MCP in tests — see “Weather and zodiac: rate limits and decoupling” |
 | **Latency** | Soft tip ~10s · target ready ≤20s — **one contract only** (see Performance — all components) |
 | **Secrets** | Env vars only in `.env.local` — never commit real keys in specs or repo |
 

@@ -250,6 +250,26 @@ npm install --registry=https://registry.npmmirror.com
   - 失败时：向调用方返回错误——禁止静默空成功
   - 产品行为：见项目需求文档
 
+## 天气与星座：限流与解耦
+
+Pandorium MCP 限流严格。超限返回 HTTP 429，响应体**不是** JSON-RPC，而是 `{"success":false,"error":"Too many requests","retryAfter":132}`。窗口常以分钟计。既有项目曾在测试中连打 live MCP，开发结束时上游已限流，成品无法使用。
+
+**链路**
+
+- 天气（Open-Meteo）与星座（Pandorium）并行、互不等待；穿搭可在天气未返回时先生成
+- 前端星座请求禁止把 `weather` 放进 `useEffect` 依赖——天气晚到会二次触发 MCP→LLM，直接打满配额
+- 同一档案同一日，本命盘 / 行运各最多请求一次；禁止对 429 自动重试（须等 `retryAfter` 过后再由用户触发）
+
+**错误**
+
+- 限流体先认 `success === false`，取出 `retryAfter` 展示给用户
+- 不要按 JSON-RPC `error.message` 解析（该字段为 `undefined`，会变成空的「MCP 错误」）
+
+**测试**
+
+- 单元 / 集成 / CI 用夹具，禁止出网打 Pandorium
+- live 冒烟两次间隔至少 30 秒；开发过程不要把 live MCP 当日常回归
+
 ## 环境变量
 
 将密钥复制到 `.env.local`（已 gitignore；勿提交）。不要在源码中硬编码。规格仅列出**环境变量代码**——本地自行填值。权威清单见 [`keys-cn.md`](./keys-cn.md)。
@@ -354,6 +374,7 @@ AKSHARE_MCP_PACKAGE=
 | **地图** | 单一服务端 `GOOGLE_MAPS_API_KEY`——禁止 `NEXT_PUBLIC_*`；中国大陆默认高德，或用 Google Maps MCP；避免从大陆直连 Google 客户端 |
 | **Tripadvisor** | 仅使用 Terra 主机；返回 UI 前将本地化字段展平为普通字符串 |
 | **AKShare MCP** | 需要本地 `uv` / `uvx`；无 API Key——不要为其伪造 Finnhub 式 token |
+| **Pandorium** | 限流严格；天气与星座并行；测试勿连打 live MCP——见「天气与星座：限流与解耦」 |
 | **延迟** | 软提示约 10s · 就绪目标 ≤20s——**仅此一套约定**（见「性能」——所有组件） |
 | **密钥** | 仅通过 `.env.local` 环境变量——切勿在规格或仓库中提交真实密钥 |
 
