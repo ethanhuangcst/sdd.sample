@@ -11,7 +11,7 @@ What2Eat 是一款面向「不知道吃什么」场景的 AI 辅助用餐决策�
 ## 如何拼在一起
 
 - **Web 应用** — 账户、偏好档案、「现在就定」流程、已存地点与解释视图。浏览器只与应用后端通信。
-- **eat-places-mcp** — 对用户区域做地理编码，并从已批准的地图提供方（Google Maps 或高德 AMap，按 `pack/specs/tech-spec.*.md` 地区矩阵）获取附近餐厅/兴趣点、营业时间与基础地点信息。
+- **eat-places-mcp** — 对用户区域做地理编码，并从已批准的地图提供方（Google Maps 或高德 AMap，按 `pack/tech-spec.cn/tech-spec.md` 与 `pack/tech-spec.en/tech-spec.md` 第 1 节的地区规则）获取附近餐厅/兴趣点、营业时间与基础地点信息。
 - **what2eat-agent** — 使用 MCP 数据与 RAG 知识对选项排序；区分地点事实、评估与建议。
 - **food-pref-rag** — 为智能体提供菜系模式、常见饮食约束与用餐时段启发式。
 

@@ -1,6 +1,6 @@
 # Tech spec
 
-This document defines the stack, third-party capabilities, and cross-cutting implementation rules. Product behavior lives in each project's requirements doc; MyDay-specific rules are in section 5. Chinese version: [`tech-spec.zh.md`](./tech-spec.zh.md).
+This document defines the stack, third-party capabilities, and cross-cutting implementation rules. Product behavior lives in each project's `specs/req-spec.md` (seed from `pack/projects/<locale>/req-spec.md`). Chinese version: [`../tech-spec.cn/tech-spec.md`](../tech-spec.cn/tech-spec.md).
 
 ## 1. Third-party capabilities
 
@@ -101,9 +101,10 @@ AMAP_HOST=https://restapi.amap.com
 
 Key pitfalls:
 
-- Pass the key as the `key` query parameter, not a header. REST on the server only; prefer AMap URI H5 in the browser — do not ship a JS API key to the client (see MyDay appendix)
+- Pass the key as the `key` query parameter, not a header. REST on the server only. Open the map with `https://uri.amap.com/marker?position=longitude,latitude`. Do not load the JS API, and do not ship a JS API key to the client
 - Geocoding is `/v3`. Text search, nearby search, and walking directions are `/v5`. Do not set one `AMAP_BASE_URL=/v3` for every call
-- Browser geolocation and Open-Meteo use WGS-84; AMap REST uses GCJ-02 — convert coordinates
+- Browser geolocation and Open-Meteo use WGS-84. AMap REST uses GCJ-02. Convert between WGS-84 and GCJ-02 in project code, and do not add a dependency for it. Convert AMap coordinates to WGS-84 before deciding whether the place is in mainland China, and before the natal chart and weather. Keep the original GCJ-02 coordinates for restaurant search. A typed city from AMap is already GCJ-02
+- Decide mainland China from the geocode admin result, not from a latitude and longitude box. Reverse-geocode browser coordinates with `GET /v3/geocode/regeo?location={longitude},{latitude}` first. An `adcode` starting with 71, 81, or 82 is Taiwan, Hong Kong, or Macau, and is not mainland China. An empty forward-geocode result is a failed resolve
 
 #### Hong Kong and Macau
 
@@ -123,7 +124,8 @@ GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.locatio
 
 Key pitfalls:
 
-- One server `GOOGLE_MAPS_API_KEY`. No `NEXT_PUBLIC_*`. Geocoding and Directions send it as the `key` query parameter. Places and place photos send it as `X-Goog-Api-Key`
+- One server `GOOGLE_MAPS_API_KEY`. No `NEXT_PUBLIC_*`. Geocoding and Directions send it as the `key` query parameter. Places and place photos send it as `X-Goog-Api-Key`. Open the map with `https://www.google.com/maps/dir/?api=1&destination=latitude,longitude`. Do not load the JS API
+- Decide mainland China from the geocode `country` short name. `CN` is mainland China. `HK`, `MO`, `TW`, and any other country are not. Reverse-geocode browser coordinates once. Do not use a latitude and longitude box
 - Geocoding: `GET ${GOOGLE_MAPS_GEOCODE_URL}?address={address}&key=${GOOGLE_MAPS_API_KEY}`. Directions: `GET ${GOOGLE_MAPS_DIRECTIONS_URL}?origin={lat},{lng}&destination={lat},{lng}&mode=walking&key=${GOOGLE_MAPS_API_KEY}`. That order is `latitude,longitude`, the reverse of AMap. Success is `status` `OK`. On 2026-10-13 both calls returned `OK`
 - Places: `POST` the search URL with `Content-Type: application/json`, `X-Goog-Api-Key`, and `X-Goog-FieldMask` from `GOOGLE_MAPS_FIELD_MASK`. `searchNearby` body:
 
@@ -166,12 +168,15 @@ Same as **Hong Kong and Macau** (Google Maps and the env block and pitfalls abov
 #### Mainland China
 
 ```bash
+# No lockfile yet: this command only creates it
+npm install --registry=https://registry.npmmirror.com
+# Lockfile present
 npm ci --registry=https://registry.npmmirror.com
 ```
 
 Key pitfalls:
 
-- When a lockfile exists, use `npm ci`. `npm install --registry=...` rewrites `resolved` to the mirror
+- When a lockfile exists, use only `npm ci`. Do not use `npm install` to rewrite it. That rewrites `resolved` to the mirror
 - `registry.npmjs.org` in the lockfile means the configured registry. `npm ci --registry=https://registry.npmmirror.com` downloads from the mirror and does not edit the lockfile
 - Do not run `npm config set registry`. Do not commit a project `.npmrc`
 - On `edgesOut`, rerun `npm ci --registry=https://registry.npmmirror.com --legacy-peer-deps`. Do not change pinned versions
@@ -183,10 +188,13 @@ Same as **Mainland China** (npmmirror).
 #### Other regions
 
 ```bash
+# No lockfile yet: this command only creates it
+npm install
+# Lockfile present
 npm ci
 ```
 
-When a lockfile exists, use `npm ci`, not `npm install`. Do not run `npm config set registry` and do not commit a project `.npmrc`. If `npm config get registry` is not `https://registry.npmjs.org/`, run `npm config delete registry`, then `npm ci`.
+When a lockfile exists, use only `npm ci`. Do not use `npm install` to refresh dependencies. Do not run `npm config set registry` and do not commit a project `.npmrc`. If `npm config get registry` is not `https://registry.npmjs.org/`, run `npm config delete registry`, then `npm ci`.
 
 ### Weather
 
@@ -236,14 +244,14 @@ Request: `POST $PANDORIUM_MCP_URL` with `Content-Type: application/json` and `Ac
 }
 ```
 
-`get_current_transits` uses the same `birthData` and changes `params.name`. Parse the SSE `data:` line: `result.content` is an array, and the chart is the JSON string at `result.content[0].text`. No `content` means failure. When the profile has no birth time, `time` is `12:00` (MyDay: section 5).
+`get_current_transits` uses the same `birthData` and changes `params.name`. Parse the SSE `data:` line: `result.content` is an array, and the chart is the JSON string at `result.content[0].text`. No `content` means failure. When the profile has no birth time, `time` is `12:00`.
 
 Key pitfalls:
 
 - Date of birth alone is not enough. A missing `city` or IANA `timezone` fails the schema
 - 429 body is `{"success":false,"error":"Too many requests","retryAfter":…}`, not JSON-RPC — show `retryAfter`; never auto-retry 429
 - Use fixtures in unit/integration/CI; no live MCP on the network; ≥30s between live smoke calls
-- Parallel fetch and once-per-day limits live in the project appendix (MyDay: section 5)
+- Whether weather and zodiac run together, and how many calls one profile may make in a day, is set by that project's requirements doc
 
 ### Pokémon TCG catalog
 
@@ -260,6 +268,12 @@ On 2026-10-13 `GET /v2/zh-cn/cards/SV7-001` and `GET /v2/en/cards/base1-4` retur
 Key pitfalls:
 
 - `lang` is `zh-cn`, `zh-tw`, or `en`. Use documented paths and fields only
+
+## Design principles
+
+- Minimal dependencies: prefer the platform and the standard library. Do not add a framework the project does not use.
+- Persist with local files only. Profiles and uploads live under `data/`. No database and no ORM.
+- Plaintext secrets live in `.secrets` at the project root. Runtime reads `.env.local` only. Do not commit either file. Do not put secrets in replies, logs, or client responses.
 
 ## 2. Stack
 
@@ -311,7 +325,7 @@ Whether UI copy uses i18n is decided by that project's requirements doc; if i18n
 
 ### 3.6 Pandorium and weather in parallel
 
-Rate limits, `birthData`, and test rules for the zodiac MCP are in section 1 (**Zodiac MCP**). Component rule: fetch weather and zodiac in parallel; at most one natal chart and one transit call per profile per day.
+Rate limits, `birthData`, and test rules for the zodiac MCP are in section 1 (**Zodiac MCP**). Whether weather and zodiac run together, and how many calls one profile may make in a day, is set by that project's requirements doc.
 
 ## 4. Environment variable index
 
@@ -320,62 +334,3 @@ Each capability in section 1 includes an example `.env.local` block. Enable only
 ```env
 DATA_DIR=
 ```
-
-## 5. Project appendix: MyDay
-
-Product behavior is in [`../projects/myday/req.en.md`](../projects/myday/req.en.md). Implementation rules follow below. Chat, image, and maps: section 1 (chat and image both via Quanzil on one key: chat `gpt-6-astra`, image `gemini-3.1-flash-lite-image`; mainland AMap, everywhere else Google Maps).
-
-### Dependencies
-
-Do not add: Prisma / any database, an MCP SDK, the Maps JavaScript loader as a client key, or `NEXT_PUBLIC_*` secrets. Image downscaling uses `sharp` bundled with Next. Coordinate conversion, WMO mapping, sun-sign calculation, and MCP JSON-RPC use the stdlib and `fetch`.
-
-### Storage and routes
-
-| Path | Responsibility |
-| --- | --- |
-| `data/profiles.json` | Profile array (id, name, gender, date of birth, height, weight, occupation, `photoPath` filename or empty) |
-| `data/uploads/` | User photos and downloaded outfit images |
-| Tests | `DATA_DIR` points at a temp dir; default `data/` |
-
-`photoPath` stores a filename only. Read it from `data/uploads/` via `uploadsDir()`, not `cwd + photoPath`. A read failure must error. When a profile photo exists, pass that file as `generateContent` `inlineData` for every region. Never drop it and call again with text only.
-
-Route Handlers must not return secrets to the client. Day-plan chunks (weather, zodiac, outfit text, outfit image, restaurant list) are independent and parallel; a failure affects only its own chunk.
-
-### Google Maps (Hong Kong, Macau, and other regions)
-
-- Nearby search stays within 3 km. Stop at the first non-empty result. Do not widen the radius.
-- Empty results return an error or copy that tells the user to change cuisine or location — never a blank list.
-- Place photos go through a server photo proxy. Do not put the Maps key in client `img` URLs.
-- Invalid location: coordinates near `35.86, 104.20` (about 0.05° tolerance) or `accuracy > 8000m`. Do not enter the day plan with an invalid fix.
-
-Mainland China MyDay uses AMap instead: server REST only, URI H5 for the map overlay (no JS API key in the browser), WGS-84 for the browser and Open-Meteo, GCJ-02 for AMap. See the Chinese spec appendix for the retrieval ladder and cuisine keywords.
-
-### Weather and zodiac
-
-- Open-Meteo: `latitude` and `longitude` (WGS-84) plus `timezone=auto`. Map `weather_code` to display-language copy before showing it.
-- Call Pandorium with `fetch` and parse SSE `data:` lines. Do not add an MCP SDK. `birthData` shape:
-
-```json
-{
-  "date": "1990-03-15",
-  "time": "12:00",
-  "location": {
-    "latitude": 31.2304,
-    "longitude": 121.4737,
-    "timezone": "Asia/Shanghai",
-    "city": "Shanghai"
-  }
-}
-```
-
-- When the profile has no birth time, `time` is `12:00`. Do not call the MCP with an invalid location. Compute sun sign and age locally.
-- Fetch weather and zodiac in parallel. Do not put `weather` in the zodiac request `useEffect` dependencies.
-- At most one natal chart and one transit call per profile per day.
-
-### Tests
-
-Critical-path unit coverage includes: invalid-location detection, WGS-84↔GCJ-02 where AMap is used, WMO mapping, sun sign, and "photo present means reference image attached". E2E: profile → plan → day-plan chunks render.
-
-### i18n
-
-Supported locales and copy rules are in `req.en.md`.

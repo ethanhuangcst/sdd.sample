@@ -2,7 +2,7 @@
 
 ## What it is
 
-What2Eat is an AI-assisted meal decision helper for people who cannot decide what to eat. It helps users pick a dish or nearby place from preferences, constraints, location, weather, and time of day. It combines LLM (Quanzil or OpenAI per region), agents, MCP services, and maps/places data (Google Maps or AMap per `pack/specs/tech-spec.*.md` section 1). It does not place orders, process payments, or replace restaurant menus, allergen labels, or medical dietary advice.
+What2Eat is an AI-assisted meal decision helper for people who cannot decide what to eat. It helps users pick a dish or nearby place from preferences, constraints, location, weather, and time of day. It combines LLM (Quanzil or OpenAI per region), agents, MCP services, and maps/places data (Google Maps or AMap per section 1 of `pack/tech-spec.cn/tech-spec.md` and `pack/tech-spec.en/tech-spec.md`). It does not place orders, process payments, or replace restaurant menus, allergen labels, or medical dietary advice.
 
 ## Who it’s for
 
@@ -11,7 +11,7 @@ Primarily individuals and small groups who want a fast, constrained recommendati
 ## How it fits together
 
 - **Web app** — account, preference profile, “decide now” flow, saved places, and explanation views. The browser talks only to the app backend.
-- **eat-places-mcp** — geocodes the user area and retrieves nearby restaurants / POIs, hours, and basic place details from approved map providers (Google Maps or AMap per the regional matrix in `pack/specs/tech-spec.*.md`).
+- **eat-places-mcp** — geocodes the user area and retrieves nearby restaurants / POIs, hours, and basic place details from approved map providers (Google Maps or AMap per the regional matrix in `pack/tech-spec.cn/tech-spec.md` and `pack/tech-spec.en/tech-spec.md`).
 - **what2eat-agent** — ranks options using MCP data plus RAG knowledge; separates place facts, assessments, and suggestions.
 - **food-pref-rag** — cuisine patterns, common dietary constraints, and meal-timing heuristics for the agent.
 

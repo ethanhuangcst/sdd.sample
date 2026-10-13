@@ -8,14 +8,14 @@ ADR 0001 引入 `tech-delta` 分层，但课程要求技术规格只存在于 `t
 
 ## 决策
 
-1. **文档位置**：`pack/specs/tech-spec.zh.md` 与 `pack/specs/tech-spec.en.md` 为唯一技术规格；项目附录（如 MyDay）写在规格内，**废止 tech-delta**。
+1. **文档位置**：`pack/tech-spec.cn/tech-spec.md` 与 `pack/tech-spec.en/tech-spec.md` 为唯一共用技术规格。项目行为写在 `pack/projects/<locale>/req-spec.md`。共用规格不放项目附录。**废止 tech-delta**。
 2. **LLM**：全地区对话与图像均经 Quanzil；环境变量 `QUANZIL_*`；不写厂商特有参数（无官方文档时不臆造）。
 3. **地图**：仅 Google Maps 与 AMap，按地区矩阵选择；移除 Google Maps MCP 与 Tripadvisor。
 4. **npm**：大陆与香港 npmmirror，海外 npmjs.org，写在 tech-spec。
-5. **Pack / Spikes**：`pack/projects` 与 `pack/specs` 仅文档；可运行验证放在 `spikes/`（本 ADR 时不建应用）。
+5. **Pack / Spikes**：`pack/tech-spec.cn`、`pack/tech-spec.en` 与 `pack/projects` 仅文档；可运行验证放在 `spikes/`。
 
 ## 后果
 
 - 维护点：两份 tech-spec + 项目 req/brd/prompt；换 LLM 上游由 Quanzil 部署承担，规格只维护 Quanzil 契约。
-- MyDay 等技术约束在规格附录中，prompt 引用 `../../specs/tech-spec.*.md`。
+- MyDay 种子在 `pack/projects/myday.cn/` 与 `pack/projects/myday.en/`。复制后工程内为 `specs/req-spec.md` 与 `specs/tech-spec.md`。
 - 0001 中 tech-delta 与「按 OpenAI/Qwen 分叉」的决策不再适用。

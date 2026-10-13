@@ -1,6 +1,6 @@
 # 技术规格
 
-本文定义技术栈、第三方能力与通用实现约束。产品功能见各项目需求文档；MyDay 专有约束见第 5 节。英文版见 [`tech-spec.en.md`](./tech-spec.en.md)。
+本文定义技术栈、第三方能力与通用实现约束。产品功能见各项目 `specs/req-spec.md`（种子来自 `pack/projects/<locale>/req-spec.md`）。英文版见 [`../tech-spec.en/tech-spec.md`](../tech-spec.en/tech-spec.md)。
 
 ## 1. 第三方能力
 
@@ -116,9 +116,10 @@ AMAP_HOST=https://restapi.amap.com
 
 ##### 关键陷阱
 
-- Key 放在查询参数 `key`，不放请求头。仅服务端使用，禁止 `NEXT_PUBLIC_*`。浏览器地图用 URI H5，不要加载 JS API（MyDay 细节见第 5 节）
+- Key 放在查询参数 `key`，不放请求头。仅服务端使用，禁止 `NEXT_PUBLIC_*`。浏览器地图用 `https://uri.amap.com/marker?position=经度,纬度`，不要加载 JS API
 - 地理编码在 `/v3`，关键字搜索、周边搜索、步行路线在 `/v5`。禁止设置单一 `AMAP_BASE_URL=/v3` 覆盖全部接口
-- 浏览器定位与 Open-Meteo 用 WGS-84；高德 REST 用 GCJ-02，须做坐标转换
+- 浏览器定位与 Open-Meteo 用 WGS-84；高德 REST 用 GCJ-02。WGS-84 与 GCJ-02 自行换算，不新增依赖。判断是否在中国大陆、写入星盘和天气之前，先把高德坐标转成 WGS-84。查餐厅仍用原来的 GCJ-02。手输城市的高德结果已是 GCJ-02
+- 是否在中国大陆，用地理编码返回的行政区判断，不写经纬度方框。浏览器坐标先走 `GET /v3/geocode/regeo?location={经度},{纬度}`。`adcode` 以 71、81、82 开头分别是台湾、香港、澳门，都不是中国大陆。正向地理编码没有结果时，按解析失败处理
 
 #### 地区：中国大陆以外（Google Maps）
 
@@ -138,7 +139,8 @@ GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.locatio
 
 ##### 关键陷阱
 
-- 单一服务端 `GOOGLE_MAPS_API_KEY`，禁止 `NEXT_PUBLIC_*`。Geocoding、Directions 把 Key 放在查询参数 `key`。Places 与地点照片把 Key 放在请求头 `X-Goog-Api-Key`
+- 单一服务端 `GOOGLE_MAPS_API_KEY`，禁止 `NEXT_PUBLIC_*`。Geocoding、Directions 把 Key 放在查询参数 `key`。Places 与地点照片把 Key 放在请求头 `X-Goog-Api-Key`。浏览器地图用 `https://www.google.com/maps/dir/?api=1&destination=纬度,经度`，不要加载 JS API
+- 是否在中国大陆，看地理编码结果里 `country` 的短码。`CN` 是中国大陆。`HK`、`MO`、`TW` 和其他国家不是。浏览器坐标先做一次逆地理编码。不写经纬度方框
 - Geocoding：`GET ${GOOGLE_MAPS_GEOCODE_URL}?address={地址}&key=${GOOGLE_MAPS_API_KEY}`。Directions：`GET ${GOOGLE_MAPS_DIRECTIONS_URL}?origin={lat},{lng}&destination={lat},{lng}&mode=walking&key=${GOOGLE_MAPS_API_KEY}`。这里是 `纬度,经度`，与高德的 `经度,纬度` 相反。`status` 为 `OK` 才算成功。2026-10-13 实测两条都返回 `OK`
 - Places：`POST` 上面的 search URL，请求头 `Content-Type: application/json`、`X-Goog-Api-Key`、`X-Goog-FieldMask: ${GOOGLE_MAPS_FIELD_MASK}`。`searchNearby` 的正文：
 
@@ -182,12 +184,15 @@ GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.locatio
 ##### 环境配置
 
 ```bash
+# 还没有 lockfile 时，只用来生成它
+npm install --registry=https://registry.npmmirror.com
+# 已有 lockfile 时
 npm ci --registry=https://registry.npmmirror.com
 ```
 
 ##### 关键陷阱
 
-- 已有 lockfile 时用 `npm ci`，不要用 `npm install --registry=...`。后者会把 `resolved` 改写成镜像地址
+- 已有 lockfile 时只用 `npm ci`。不要用 `npm install` 改写它，否则 `resolved` 会变成镜像地址
 - lockfile 里的 `registry.npmjs.org` 表示「当前配置的 registry」。`npm ci --registry=https://registry.npmmirror.com` 从镜像下载，不改 lockfile
 - 禁止 `npm config set registry`，禁止提交项目 `.npmrc`
 - `npm ci` 遇 `edgesOut` 空指针时改为 `npm ci --registry=https://registry.npmmirror.com --legacy-peer-deps`，不要改 lockfile 里的版本
@@ -197,12 +202,15 @@ npm ci --registry=https://registry.npmmirror.com
 ##### 环境配置
 
 ```bash
+# 还没有 lockfile 时，只用来生成它
+npm install
+# 已有 lockfile 时
 npm ci
 ```
 
 ##### 关键陷阱
 
-- 已有 lockfile 时用 `npm ci`。不要用 `npm install` 去「刷新」依赖
+- 已有 lockfile 时只用 `npm ci`。不要用 `npm install` 刷新依赖
 - 禁止 `npm config set registry`，禁止提交项目 `.npmrc`
 - 若 `npm config get registry` 不是 `https://registry.npmjs.org/`，用 `npm config delete registry` 清掉用户级设置后再 `npm ci`
 
@@ -265,14 +273,14 @@ PANDORIUM_MCP_URL=https://pandorium.app/mcp
 }
 ```
 
-`get_current_transits` 使用同一个 `birthData`，`params.name` 改为该工具名。成功时解析 SSE 的 `data:` 行：`result.content` 是数组，正文在 `result.content[0].text`（一段 JSON 字符串）。没有 `content` 即失败。无出生时刻时 `time` 固定 `12:00`（MyDay 见第 5 节）。
+`get_current_transits` 使用同一个 `birthData`，`params.name` 改为该工具名。成功时解析 SSE 的 `data:` 行：`result.content` 是数组，正文在 `result.content[0].text`（一段 JSON 字符串）。没有 `content` 即失败。无出生时刻时 `time` 固定 `12:00`。
 
 ##### 关键陷阱
 
 - 禁止只传出生日期。`location` 缺 `city` 或 IANA `timezone` 会被 schema 拒绝
 - 429 响应体为 `{"success":false,"error":"Too many requests","retryAfter":…}`，不是 JSON-RPC；须展示 `retryAfter`，禁止对 429 自动重试
 - 单元 / 集成 / CI 用夹具，禁止出网打 live MCP；冒烟间隔 ≥30 秒
-- 与天气并行、同一档案同一日的请求次数，见使用该能力的项目附录（MyDay 在第 5 节）
+- 与天气是否并行、同一档案同一日请求几次，由该项目的需求文档规定
 
 ---
 
@@ -293,6 +301,12 @@ TCGDEX_BASE_URL=https://api.tcgdex.net/v2
 ##### 关键陷阱
 
 - `lang` 用 `zh-cn`、`zh-tw` 或 `en`。只使用文档记载的路径与字段
+
+## 设计原则
+
+- 最小依赖：优先平台与标准库。不引入项目用不到的框架。
+- 持久化只用本地文件。档案与上传文件放在 `data/` 下。禁止数据库，禁止 ORM。
+- 密钥明文放在工程根目录 `.secrets`。运行时只读 `.env.local`。这两个文件都不提交。回复、日志和客户端响应里不出现密钥。
 
 ## 2. 技术栈
 
@@ -344,7 +358,7 @@ TCGDEX_BASE_URL=https://api.tcgdex.net/v2
 
 ### 3.6 星座与天气
 
-限流、`birthData` 与测试约束见第 1 节「星座 MCP」。与天气并行、同一档案同一日的请求次数见第 5 节。
+限流、`birthData` 与测试约束见第 1 节「星座 MCP」。与天气是否并行、同一日请求几次，由该项目的需求文档规定。
 
 ## 4. 环境变量汇总
 
@@ -353,65 +367,3 @@ TCGDEX_BASE_URL=https://api.tcgdex.net/v2
 ```env
 DATA_DIR=
 ```
-
-## 5. 项目附录：MyDay
-
-产品功能见 [`../projects/myday/req.zh.md`](../projects/myday/req.zh.md)。以下为 MyDay 的实现约束。对话 / 图像 / 地图见第 1 节（对话与图像均经 Quanzil：对话 `gpt-6-astra`，图像 `gemini-3.1-flash-lite-image`；大陆高德，大陆以外 Google Maps）。
-
-### 依赖边界
-
-不新增：Prisma / 数据库、MCP SDK、高德 JS API、`NEXT_PUBLIC_*` 密钥。图像缩小使用 Next 已带的 `sharp`。坐标转换、WMO→中文、太阳星座、MCP JSON-RPC 用标准库 / `fetch` 自写。
-
-### 存储与路由
-
-| 路径 | 职责 |
-| --- | --- |
-| `data/profiles.json` | 档案数组（id、姓名、性别、出生日期、身高、体重、职业、`photoPath` 文件名或空） |
-| `data/uploads/` | 用户照片与下载后的穿搭图 |
-| 测试 | `DATA_DIR` 指向临时目录；默认 `data/` |
-
-`photoPath` 只存文件名，从 `data/uploads/` 读取（`uploadsDir()`，不要 `cwd + photoPath`）。读失败须报错。有档案照片时必须把该文件作为 `generateContent` 的 inline image，禁止静默改走不带图片的请求。
-
-服务端 Route Handler 不把密钥返回客户端。今日计划分块（天气、星座、穿搭文字、穿搭图、餐厅列表）独立、可并行，失败只影响本块。
-
-### 高德（大陆）
-
-- REST 只走服务端：地理编码 `GET /v3/geocode/geo`；周边搜索 `GET /v5/place/around`，`location=lng,lat`（经度在前）、`radius=3000`、`sortrule=distance`
-- 浏览器地图用 URI H5，不用 JS API：标注 `https://uri.amap.com/marker?position={lng},{lat}&name={name}&src=myday&coordinate=gaode`；导航 `https://uri.amap.com/navigation?to={lng},{lat},{name}&mode=walk&src=myday&callnative=1`。浮层用 iframe 或跳转；Escape / 点击背景关闭
-- 坐标系：浏览器定位与 Open-Meteo 用 WGS-84；高德 REST / URI 用 GCJ-02。浏览器定位保留 WGS-84 查天气，转 GCJ-02 后再调高德。手动城市的地理编码结果已是 GCJ-02，搜餐厅不要再转；查天气时 GCJ-02 → WGS-84
-- 坐标约 `35.86, 104.20`（容差约 0.05°）或 `accuracy > 8000m` 视为无效定位，禁止进入今日计划
-- 周边搜固定 3 公里，有结果即停。检索阶梯：`keywords` + `types=050000` → 仅 `keywords` → 仅 `types=050000`
-- 菜系关键词：日式→`日本料理`；西班牙式→`西班牙菜`；意式→`意大利菜`；快餐→`快餐`；粤菜→`粤菜`
-- `infocode != 10000` 或空列表：返回错误或「换菜系 / 改地点」文案
-
-香港和澳门 MyDay 使用 Google Maps（见第 1 节「地图」），地点照片经服务端代理。
-
-### 天气与星座
-
-- Open-Meteo：`latitude` `longitude`（WGS-84）+ `timezone=auto`。`weather_code` 必须映射为中文后再展示
-- Pandorium 用 `fetch` 解析 SSE，不加 MCP SDK。`birthData`：
-
-```json
-{
-  "date": "1990-03-15",
-  "time": "12:00",
-  "location": {
-    "latitude": 31.2304,
-    "longitude": 121.4737,
-    "timezone": "Asia/Shanghai",
-    "city": "上海"
-  }
-}
-```
-
-- 无出生时刻时 `time` 固定 `12:00`。无效定位时不调用 MCP。太阳星座与年龄本地计算
-- 天气与星座请求并行；禁止把 `weather` 放进星座请求的 `useEffect` 依赖
-- 同一档案、同一日，本命盘与行运各最多请求一次
-
-### 测试要点
-
-关键路径单元覆盖须含：无效定位判定、WGS-84↔GCJ-02、WMO→中文、太阳星座、菜系关键词、有照片必须带参考图。E2E：档案 → 规划 → 今日计划分块渲染。
-
-### i18n
-
-本项目界面仅中文，文案可硬编码。

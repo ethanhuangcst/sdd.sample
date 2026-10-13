@@ -11,7 +11,7 @@ Where2Play 是一款 AI 辅助的活动与出游去处发现工具。它根据�
 ## 如何拼在一起
 
 - **Web 应用** — 账户、游玩档案、「找点什么」流程、已存地点、出游计划与解释视图。浏览器只与应用后端通信。
-- **play-places-mcp** — 对用户区域做地理编码，并从已批准的地图提供方（Google Maps 或高德 AMap，按 `pack/specs/tech-spec.*.md` 地区矩阵）获取附近场馆/兴趣点、营业时间与基础地点信息；相关时可附带当地天气。
+- **play-places-mcp** — 对用户区域做地理编码，并从已批准的地图提供方（Google Maps 或高德 AMap，按 `pack/tech-spec.cn/tech-spec.md` 与 `pack/tech-spec.en/tech-spec.md` 第 1 节的地区规则）获取附近场馆/兴趣点、营业时间与基础地点信息；相关时可附带当地天气。
 - **where2play-agent** — 使用 MCP 数据与 RAG 知识对出游选项排序；区分地点事实、评估与建议。
 - **play-context-rag** — 为智能体提供活动类型启发式、天气适宜性与年龄段说明。
 

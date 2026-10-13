@@ -1,3 +1,4 @@
 **/keys*.md
-pack/specs/.secrets
+.secrets
+**/.secrets
 .DS_Store
