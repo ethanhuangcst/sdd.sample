@@ -2,7 +2,7 @@
 
 ## What it is
 
-Where2Play is an AI-assisted activity and outing finder. It helps people decide where to play—parks, indoor play spaces, sports courts, family attractions, and casual hangouts—based on location, weather, time available, age group, and mood. It combines LLMs, agents, MCP services, maps/places data, and optional review enrichment. It does not book tickets, process payments, or replace venue rules, safety notices, or official hours.
+Where2Play is an AI-assisted activity and outing finder. It helps people decide where to play—parks, indoor play spaces, sports courts, family attractions, and casual hangouts—based on location, weather, time available, age group, and mood. It combines LLM (Quanzil or OpenAI per region), agents, MCP services, and maps/places data (Google Maps or AMap per `pack/specs/tech-spec.*.md` section 1). It does not book tickets, process payments, or replace venue rules, safety notices, or official hours.
 
 ## Who it’s for
 
@@ -11,7 +11,7 @@ Primarily families, friends, and small groups looking for “something to do nea
 ## How it fits together
 
 - **Web app** — account, play profile, “find something” flow, saved places, outing plans, and explanation views. The browser talks only to the app backend.
-- **play-places-mcp** — geocodes the user area and retrieves nearby venues / POIs, hours, and basic place details from approved map and places providers (Google Maps / AMap / Maps MCP; optional Tripadvisor Terra enrichment); may attach local weather when relevant.
+- **play-places-mcp** — geocodes the user area and retrieves nearby venues / POIs, hours, and basic place details from approved map providers (Google Maps or AMap per the regional matrix in `pack/specs/tech-spec.*.md`); may attach local weather when relevant.
 - **where2play-agent** — ranks outing options using MCP data plus RAG knowledge; separates place facts, assessments, and suggestions.
 - **play-context-rag** — activity-type heuristics, weather suitability, and age-band notes for the agent.
 
@@ -45,7 +45,7 @@ Primarily families, friends, and small groups looking for “something to do nea
 
 ### Place Details
 
-- Pop-up or screen with address, hours, suitable age notes (heuristic), review snippets when enrichment is configured, and match explanation; close via Close, Escape, or outside click
+- Pop-up or screen with address, hours, suitable age notes (heuristic), and match explanation; close via Close, Escape, or outside click
 - Link to Why This Outing analysis; show sources and last update
 - Save to Favorites or Dismiss with confirmation
 
@@ -58,7 +58,7 @@ Primarily families, friends, and small groups looking for “something to do nea
 ### Places / Conditions MCP — play-places-mcp
 
 - Built-in MCP that resolves location and retrieves nearby play-relevant places and, when useful, local weather summary
-- Normalizes provider data; flags stale, missing, or conflicting hours and ratings
+- Normalizes provider data; flags stale, missing, or conflicting hours
 - Returns standardized place identity, distance, indoor/outdoor when known, sources, last update, and confidence
 
 ### Outing Alerts

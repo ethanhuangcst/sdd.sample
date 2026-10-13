@@ -2,7 +2,7 @@
 
 ## What it is
 
-What2Eat is an AI-assisted meal decision helper for people who cannot decide what to eat. It helps users pick a dish or nearby place from preferences, constraints, location, weather, and time of day. It combines LLMs, agents, MCP services, maps/places data, and optional review enrichment. It does not place orders, process payments, or replace restaurant menus, allergen labels, or medical dietary advice.
+What2Eat is an AI-assisted meal decision helper for people who cannot decide what to eat. It helps users pick a dish or nearby place from preferences, constraints, location, weather, and time of day. It combines LLM (Quanzil or OpenAI per region), agents, MCP services, and maps/places data (Google Maps or AMap per `pack/specs/tech-spec.*.md` section 1). It does not place orders, process payments, or replace restaurant menus, allergen labels, or medical dietary advice.
 
 ## Who it’s for
 
@@ -11,7 +11,7 @@ Primarily individuals and small groups who want a fast, constrained recommendati
 ## How it fits together
 
 - **Web app** — account, preference profile, “decide now” flow, saved places, and explanation views. The browser talks only to the app backend.
-- **eat-places-mcp** — geocodes the user area and retrieves nearby restaurants / POIs, hours, and basic place details from approved map and places providers (Google Maps / AMap / Maps MCP; optional Tripadvisor Terra enrichment).
+- **eat-places-mcp** — geocodes the user area and retrieves nearby restaurants / POIs, hours, and basic place details from approved map providers (Google Maps or AMap per the regional matrix in `pack/specs/tech-spec.*.md`).
 - **what2eat-agent** — ranks options using MCP data plus RAG knowledge; separates place facts, assessments, and suggestions.
 - **food-pref-rag** — cuisine patterns, common dietary constraints, and meal-timing heuristics for the agent.
 
@@ -45,7 +45,7 @@ Primarily individuals and small groups who want a fast, constrained recommendati
 
 ### Place Details
 
-- Pop-up or screen with address, hours, contact when available, review snippets (if enrichment configured), and match explanation; close via Close, Escape, or outside click
+- Pop-up or screen with address, hours, contact when available, and match explanation; close via Close, Escape, or outside click
 - Link to Why This Pick analysis; show sources and last update
 - Save to Favorites or Dismiss with confirmation
 
@@ -58,13 +58,13 @@ Primarily individuals and small groups who want a fast, constrained recommendati
 ### Places MCP — eat-places-mcp
 
 - Built-in MCP that resolves location and retrieves nearby dining options and place details
-- Normalizes provider data; flags stale, missing, or conflicting hours and ratings
+- Normalizes provider data; flags stale, missing, or conflicting hours
 - Returns standardized place identity, distance, open status when known, sources, last update, and confidence
 
 ### Decision Alerts
 
 - Show warnings on Option Cards and Place Details
-- Cover closed now, long travel time, incomplete hours, allergen uncertainty, and conflicting review signals
+- Cover closed now, long travel time, incomplete hours, and allergen uncertainty
 - Clearly highlight when a top pick becomes weaker after refresh
 
 ### Favorites & History
@@ -100,7 +100,7 @@ Primarily individuals and small groups who want a fast, constrained recommendati
 
 ### Data Quality
 
-- Always show when place and review information was last updated
+- Always show when place information was last updated
 - Flag stale, incomplete, unavailable, or conflicting data; distinguish user preference, place fact, and model suggestion
 - AI recommendations must not be presented as official restaurant commitments or health guidance
 - One provider failure must not take down the whole app
