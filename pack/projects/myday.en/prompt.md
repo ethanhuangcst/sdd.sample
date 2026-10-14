@@ -22,4 +22,4 @@
 
 # Done
 
-After tests for all four pages pass, run `npm run dev` and give the local URL in the reply.
+Complete the "Acceptance test" section in `specs/req-spec.md`.

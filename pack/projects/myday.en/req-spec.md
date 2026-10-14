@@ -86,6 +86,18 @@ Each section card has: distinctive accent/surface, own heading, body, and its ow
 - page 3: both fetches succeed before page 4
 - page 4: weather already fetched is shown; no restaurant search runs before a cuisine is entered
 
+### Acceptance test
+
+After the four fixture tests pass, run `npm run dev`. Walk the path below once in the browser. After it passes, give the local URL in the reply, then stop.
+
+- Open the profile list. Open create profile and click Save with every field empty. The page stays on create profile and marks name, birth city, date of birth, and photo as missing.
+- Create one profile. When the file control cannot upload, post a small PNG through the API, then continue. Do not change the upload implementation for this.
+- Open that profile's Plan my day page. The page has no error. Plan my day cannot be clicked until a location exists.
+- Type a city outside mainland China, for example Singapore. After the button can be clicked, click Plan my day once.
+- My day plan shows the weather, the fortune, the outfit text, and the portrait. No restaurant search runs before a cuisine is entered. After one cuisine is entered, the restaurant list appears. Open one row. Escape closes the popup.
+- When development mode requests the outfit text and the portrait twice, leave that as it is. Do not change code for it.
+- Stop after this one pass. Do not change the layout. Do not change the page so a city can be entered again. Run the four fixture tests again only when this pass changed code.
+
 ### Non-functional requirements
 - Capabilities this project uses: chat, image, weather, zodiac, and Google Maps. Do not configure AMap. Do not use Pokémon or directions.
 - Install for this demo: Next.js, React, TypeScript, Tailwind, and Vitest for the tests. Store data under `data/`. Do not install React Query, Zustand, RHF, or Playwright.
