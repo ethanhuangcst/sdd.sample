@@ -1,5 +1,6 @@
 # Restrictions
 
+- Execute only the prompt below. Do not create a Makefile. Do not use i18n. Tests are only the four fixture tests in Build. Do not add the coverage or browser journeys from section 3.4. Do not ask whether the result is usable before you finish.
 - I am working on other tasks and cannot be disturbed.
 - Run automatically; only stop when blocked.
 - Work in the current project root. Do not reference other projects. Do not write code or docs outside this project.
@@ -11,7 +12,7 @@
    - Learn the four pages from `specs/req-spec.md`, and the install list in Non-functional requirements
    - Learn the design principles and the third-party capabilities this project uses from `specs/tech-spec.md`
 3. Read plaintext secrets from `.secrets` in the project root. If the file is missing, or a variable this project needs is empty, stop and ask the user. Write the variables you use into `.env.local`. Do not print secrets in the reply, logs, or commits.
-4. If there is no runnable Next.js app yet, scaffold a minimal app from the install list in Non-functional requirements in `specs/req-spec.md`. Use a non-interactive command. Do not stop on the scaffold prompts. Use the TypeScript version the scaffold installs.
+4. If there is no runnable Next.js app yet, scaffold a minimal app from the install list in Non-functional requirements in `specs/req-spec.md`. The directory may already contain `specs/` and `.secrets`. Write the app files in the current directory. Do not move the app because the directory is not empty. Use a non-interactive command. Do not stop on the scaffold prompts. Use the TypeScript version the scaffold installs.
 5. Install dependencies with the npm registry rules in `specs/tech-spec.md`.
 6. Verify only the capabilities this project needs. Send one short request each for chat, Open-Meteo, zodiac, and Google geocoding. Do not verify AMap, image generation, Pokémon, or directions. Call image generation on page 4. If a required check fails, stop and ask the user.
 
