@@ -37,6 +37,10 @@ const text = completion.choices[0]?.message?.content ?? "";
 
 Empty `text` is failure.
 
+Performance:
+
+- One short chat. On the same user wait, do not place chat ahead of image generation.
+
 Key pitfalls:
 
 - Pass `QUANZIL_API_KEY` and `QUANZIL_BASE_URL` into the client constructor. Do not set `OPENAI_API_KEY` or `OPENAI_BASE_URL`; the SDK reads those by default and calls `api.openai.com`
@@ -70,6 +74,13 @@ With no user photo, `parts` contains only `text`. With a photo, include `inlineD
 
 Read the image from `candidates[0].content.parts[].inlineData.data` (base64). `mimeType` is on that same object. No `inlineData` means failure.
 
+Performance:
+
+- Send the call when the photo and the short prompt are ready. On the same wait, do not place a chat call ahead of the image.
+- Convert the reference to JPEG or WebP and limit the long edge to about 1024px, then send it. Do not shrink it further to save time. The output stays about 1024×1024, and a smaller reference does not shorten generation.
+- Do not set `imageConfig.imageSize`. `512` returns 400.
+- Wait for the image on its own. Do not cut it off with the short wait used for maps or weather.
+
 Key pitfalls:
 
 - `generationConfig.responseModalities` must be `["IMAGE"]`. Without it the call often returns text only
@@ -98,6 +109,10 @@ AMAP_HOST=https://restapi.amap.com
 ```
 
 `location`, `origin`, and `destination` are `longitude,latitude`. Success is HTTP 200 with `status` `1` and `infocode` `10000`. On 2026-10-13 all four paths returned `infocode` `10000` with these query parameters.
+
+Performance:
+
+- Geocode a place once. Weather and restaurants use the current place. The natal chart uses the birth city. When those are different places, geocode each once.
 
 Key pitfalls:
 
@@ -132,6 +147,10 @@ GOOGLE_MAPS_PLACES_SEARCH_TEXT_URL=https://places.googleapis.com/v1/places:searc
 GOOGLE_MAPS_PLACES_PHOTO_PREFIX=https://places.googleapis.com/v1
 GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.location,places.photos
 ```
+
+Performance:
+
+- Geocode a place once. Reuse those coordinates for later place search. Do not geocode the same place again.
 
 Key pitfalls:
 
@@ -218,6 +237,10 @@ OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
 
 `latitude` and `longitude` are WGS-84. On 2026-10-13 this query returned `current` with `temperature_2m`, `relative_humidity_2m`, `weather_code`, and `wind_speed_10m`.
 
+Performance:
+
+- Send one forecast with the WGS-84 coordinates already in hand. Do not locate the user again for that forecast.
+
 Key pitfalls:
 
 - `weather_code` is a WMO code — map it to display-language copy before showing it
@@ -257,6 +280,10 @@ Request: `POST $PANDORIUM_MCP_URL` with `Content-Type: application/json` and `Ac
 
 `get_current_transits` uses the same `birthData` and changes `params.name`. Parse the SSE `data:` line: `result.content` is an array, and the chart is the JSON string at `result.content[0].text`. No `content` means failure. When the profile has no birth time, `time` is `12:00`.
 
+Performance:
+
+- Send one `calculate_natal_chart` with the birth-city coordinates already resolved. When the profile has no birth time, set `time` to `12:00` directly.
+
 Key pitfalls:
 
 - Date of birth alone is not enough. A missing `city` or IANA `timezone` fails the schema
@@ -276,15 +303,18 @@ TCGDEX_BASE_URL=https://api.tcgdex.net/v2
 
 On 2026-10-13 `GET /v2/zh-cn/cards/SV7-001` and `GET /v2/en/cards/base1-4` returned 200. The path segment `zh` returns `language-invalid`.
 
+Performance:
+
+- Send one GET for the card id. Do not request the same card again.
+
 Key pitfalls:
 
 - `lang` is `zh-cn`, `zh-tw`, or `en`. Use documented paths and fields only
 
 ## Design principles
 
-- Minimal dependencies: prefer the platform and the standard library. Do not add a framework the project does not use.
-- Persist with local files only. Profiles and uploads live under `data/`. No database and no ORM.
-- Plaintext secrets live in `.secrets` at the project root. Runtime reads `.env.local` only. Do not commit either file. Do not put secrets in replies, logs, or client responses.
+- Dependencies and persistence are in section 3.3.
+- Secrets are in section 3.4. Plaintext secrets live in `specs/.secrets`. Runtime reads `.env.local` only. Do not commit either file. Do not put secrets in replies, logs, or client responses.
 
 ## 2. Stack
 
@@ -300,41 +330,46 @@ Majors below (reference date 2026-10). Pin exact patch versions in your project'
 | AI SDK | `openai` SDK for chat only (Quanzil chat completions). Image is Gemini `generateContent` — section 1 | 7.x (6→7 has breaking changes; walk the official migration guide) |
 | Test | Vitest · RTL · Playwright | 5.x · 16.x · 1.64 |
 
-Rules: minimal dependencies; prefer the platform and stdlib; **no database** (local JSON under `data/` only unless a project spec says otherwise). npm registry: section 1. When a project's install list is shorter than this table, follow the requirements.
+Dependencies and persistence are in section 3.3. npm registry: section 1. TypeScript 7.0 in the table is the target version. When `create-next-app` creates the project, use the TypeScript that command installs. Do not change it to 7.0 while creating the project. Packages named in the install list use the versions in this table. Do not install packages the list omits. See section 3.3.
 
 ## 3. Cross-cutting contracts
 
 ### 3.1 Failure semantics
 
-- On third-party failure, return the error to the caller for display and retry — never silent empty success, empty image, or empty list.
-- Local fallback only when upstream fails, or the component is still empty after the user-visible wait path.
+- On third-party failure, return the error so the UI can explain why. Never silent empty success, empty image, or empty list.
+- Whether the user may try that call once more is decided by the project requirements. When the requirements do not mention retry, the user may retry once by hand. Do not retry in a loop.
+- Local fallback only when upstream fails, or the component is still empty after the user-visible wait. Do not switch to a fallback while the wait is still running.
 
 ### 3.2 Performance (all components)
 
-- Soft tip: after ~**10s**, show "more time is needed" while work continues — never the word "Timeout".
-- Target: each component ready within **≤20s**.
-- Server outbound timeout ~**25s** — do not add a separate 10s hard abort that kills an in-flight request.
-- Retry: at most one explicit user-triggered retry per attempt path; no auto-retry loops inside 20s.
-- Loading: fetch independent components in parallel; render each piece as it completes; show per-component progress.
+- Send independent calls together.
+- Show a block when that block is ready. When the requirements say to fetch first and show the result on the next page, follow the requirements.
+- When a call has no result, explain why under section 3.1 and end that wait. How to do the call is in that capability's Performance section.
 
-### 3.3 Secrets
+### 3.3 Minimal dependencies
+
+- Do not add a framework the project does not use. Prefer the platform and the standard library.
+- When the install list in the project requirements is shorter than the table in section 2, follow the requirements.
+- Persist with local files only. Profiles and uploads live under `data/`. No database and no ORM.
+
+### 3.4 Secrets
 
 - Runtime keys only in `.env.local` (gitignored; never commit). Env var names are listed below.
 - No `NEXT_PUBLIC_*` exposure of map or LLM keys. Lock model ids in env; do not rely on a provider default model.
 
-### 3.4 Quality bar
+### 3.5 Quality bar
 
 - Unit tests for business logic; 100% coverage of the changed critical path
 - Integration tests across API / data-boundary paths (fixtures; no outbound network by default)
 - At least one critical user journey covered by E2E in a real browser
 - Tests use a temporary data directory
-- No database: persistence is local JSON under `data/`
+- When the project requirements include a test section, and that section is shorter than this one, follow the requirements.
 
-### 3.5 Copy and i18n
+### 3.6 Copy and i18n
 
 Whether UI copy uses i18n is decided by that project's requirements doc; if i18n is not required, hard-coded strings are allowed.
 
-### 3.6 Pandorium and weather in parallel
+### 3.7 Pandorium and weather in parallel
 
 Rate limits, `birthData`, and test rules for the zodiac MCP are in section 1 (**Zodiac MCP**). Whether weather and zodiac run together, and how many calls one profile may make in a day, is set by that project's requirements doc.
 

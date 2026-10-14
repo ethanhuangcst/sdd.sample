@@ -45,6 +45,10 @@ const text = completion.choices[0]?.message?.content ?? "";
 
 `text` 为空即失败。
 
+##### 性能要求
+
+- 一次短对话。同一次用户等待里，不要把对话排在图像前面。
+
 ##### 关键陷阱
 
 - 创建客户端时传入 `QUANZIL_API_KEY` 与 `QUANZIL_BASE_URL`。禁止再配置 `OPENAI_API_KEY` 或 `OPENAI_BASE_URL`：SDK 会默认读取它们并请求 `api.openai.com`
@@ -67,7 +71,7 @@ QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:
 
 ##### 请求
 
-`POST $QUANZIL_IMAGE_URL`，请求头 `Authorization: Bearer <QUANZIL_API_KEY>` 与 `Content-Type: application/json`。2026-10-13 实测：纯文字请求，以及一张 64×64 JPEG 的 `inlineData`，都返回 HTTP 200，且 `inlineData.mimeType` 为 `image/jpeg`。1×1 JPEG 返回 400 `Unable to process input image`，参考图必须是可解码的照片。
+`POST $QUANZIL_IMAGE_URL`，请求头 `Authorization: Bearer <QUANZIL_API_KEY>` 与 `Content-Type: application/json`。参考图的 `mimeType` 用照片本身的类型：`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`。2026-10-13 实测：纯文字请求，以及一张 64×64 JPEG 的 `inlineData`，都返回 HTTP 200，且响应里的 `inlineData.mimeType` 为 `image/jpeg`。1×1 JPEG 返回 400 `Unable to process input image`，参考图必须是可解码的照片。
 
 ```json
 {
@@ -75,16 +79,23 @@ QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:
     "role": "user",
     "parts": [
       { "text": "任务摘要" },
-      { "inlineData": { "mimeType": "image/jpeg", "data": "<base64>" } }
+      { "inlineData": { "mimeType": "image/png", "data": "<base64>" } }
     ]
   }],
   "generationConfig": { "responseModalities": ["IMAGE"] }
 }
 ```
 
-无用户照片时，`parts` 只留 `text`。有照片时必须带上 `inlineData`：服务端先缩小（长边约 1024px，JPEG/WebP）再做 base64。读照片失败须报错，禁止删掉 `inlineData` 再请求。
+无用户照片时，`parts` 只留 `text`。有照片时必须带上 `inlineData`：服务端先缩小（长边约 1024px）再做 base64。`mimeType` 与缩小后的字节一致，保持在上面五种之内，不要一律改成 JPEG。读照片失败须报错，禁止删掉 `inlineData` 再请求。
 
 图片在响应的 `candidates[0].content.parts[].inlineData.data`（base64），类型在同级 `mimeType`。没有 `inlineData` 即失败。
+
+##### 性能要求
+
+- 参考图长边缩到约 1024px 后立刻发出，保留照片原来的类型。不要为了加速再缩得更小，也不要为了调用改成 JPEG。输出仍是约 1024×1024，再缩小参考图不缩短生成时间。
+- 不要设置 `imageConfig.imageSize`。设为 `512` 会返回 400。
+- 照片和短提示词齐了就发出。同一次等待里，不要在图像前面再串一次对话。
+- 图像单独等待。不要用地图或天气的短等待去切断仍在生成的图。
 
 ##### 关键陷阱
 
@@ -113,6 +124,10 @@ AMAP_HOST=https://restapi.amap.com
 ```
 
 `location`、`origin`、`destination` 都是 `经度,纬度`。HTTP 200 且 `status` 为 `1`、`infocode` 为 `10000` 才算成功。2026-10-13 四条路径按上面的查询参数实测，`infocode` 均为 `10000`。
+
+##### 性能要求
+
+- 同一个地点只做一次地理编码。天气和餐厅用当前地点的坐标。星盘用出生城市的坐标。两处不是同一个地点时，各编码一次。
 
 ##### 关键陷阱
 
@@ -147,6 +162,10 @@ GOOGLE_MAPS_PLACES_SEARCH_TEXT_URL=https://places.googleapis.com/v1/places:searc
 GOOGLE_MAPS_PLACES_PHOTO_PREFIX=https://places.googleapis.com/v1
 GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.location,places.photos
 ```
+
+##### 性能要求
+
+- 同一地点只做一次地理编码。后面的地点检索复用这次坐标，不要再打一次。
 
 ##### 关键陷阱
 
@@ -240,6 +259,10 @@ OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
 
 无需 Key。`latitude`、`longitude` 为 WGS-84。2026-10-13 实测该查询返回 `current`，其中含 `temperature_2m`、`relative_humidity_2m`、`weather_code`、`wind_speed_10m`。
 
+##### 性能要求
+
+- 使用已经得到的 WGS-84 坐标发一次预报。不要为这次预报重新定位。
+
 ##### 关键陷阱
 
 - `weather_code` 为 WMO 代码，展示前须映射为目标语言文案，禁止把裸代码或英文描述直接给用户
@@ -286,6 +309,10 @@ PANDORIUM_MCP_URL=https://pandorium.app/mcp
 
 `get_current_transits` 使用同一个 `birthData`，`params.name` 改为该工具名。成功时解析 SSE 的 `data:` 行：`result.content` 是数组，正文在 `result.content[0].text`（一段 JSON 字符串）。没有 `content` 即失败。无出生时刻时 `time` 固定 `12:00`。
 
+##### 性能要求
+
+- 使用已经解析的出生城市坐标发一次 `calculate_natal_chart`。没有出生时刻时，`time` 直接用 `12:00`。
+
 ##### 关键陷阱
 
 - 禁止只传出生日期。`location` 缺 `city` 或 IANA `timezone` 会被 schema 拒绝
@@ -309,15 +336,18 @@ TCGDEX_BASE_URL=https://api.tcgdex.net/v2
 
 2026-10-13 实测 `GET /v2/zh-cn/cards/SV7-001` 与 `GET /v2/en/cards/base1-4` 返回 200。路径里的 `zh` 会返回 `language-invalid`。
 
+##### 性能要求
+
+- 按卡片 id 发一次 GET。不要对同一张卡重复请求。
+
 ##### 关键陷阱
 
 - `lang` 用 `zh-cn`、`zh-tw` 或 `en`。只使用文档记载的路径与字段
 
 ## 设计原则
 
-- 最小依赖：优先平台与标准库。不引入项目用不到的框架。
-- 持久化只用本地文件。档案与上传文件放在 `data/` 下。禁止数据库，禁止 ORM。
-- 密钥明文放在工程根目录 `.secrets`。运行时只读 `.env.local`。这两个文件都不提交。回复、日志和客户端响应里不出现密钥。
+- 依赖与持久化见第 3.3 节。
+- 密钥见第 3.4 节。密钥明文放在 `specs/.secrets`。运行时只读 `.env.local`。这两个文件都不提交。回复、日志和客户端响应里不出现密钥。
 
 ## 2. 技术栈
 
@@ -333,41 +363,46 @@ TCGDEX_BASE_URL=https://api.tcgdex.net/v2
 | AI SDK | `openai` SDK 仅用于对话（Quanzil chat completions）。图像为 Gemini `generateContent`，见第 1 节 | 7.x（6→7 有 breaking changes，升级时过官方迁移指南） |
 | 测试 | Vitest · RTL · Playwright | 5.x · 16.x · 1.64 |
 
-规则：尽量少依赖；优先平台与标准库；**禁止数据库**（除非项目规格另有说明，否则仅用 `data/` 下本地 JSON）。npm 镜像见第 1 节。项目需求里的安装清单短于本表时，以需求为准。
+依赖与持久化见第 3.3 节。npm 镜像见第 1 节。表里的 TypeScript 7.0 是目标版本。用 `create-next-app` 建工程时，用该命令安装的 TypeScript，不在建工程时改成 7.0。安装清单里有的包，版本按本表。清单没有的包不安装，见第 3.3 节。
 
 ## 3. 通用契约（所有项目、所有能力）
 
 ### 3.1 失败语义
 
-- 第三方调用失败：向调用方返回错误，供组件展示并允许重试——禁止静默空成功、空图、空列表。
-- 降级仅在上游失败，或用户可见等待路径结束后组件仍为空时出现。禁止在等待期间静默切降级。
+- 第三方调用失败：向调用方返回错误，供界面说明原因。禁止静默空成功、空图、空列表。
+- 这一次失败后是否让用户再试一次，由该项目需求决定。需求没写时，用户可以手动再试一次。禁止自动循环重试。
+- 降级仅在上游失败，或用户可见等待结束后仍为空时出现。禁止在等待期间静默切降级。
 
 ### 3.2 性能（所有组件）
 
-- 软提示：约 **10s** 后展示「还需要更多时间」，同时继续等待——禁止把「Timeout」字样给用户。
-- 目标：每个组件 **≤20s** 就绪。
-- 服务端出站超时约 **25s**——不要另做一套 10s 硬中止掐断仍在进行的请求。
-- 重试：每条尝试路径最多一次由用户显式触发；禁止 20s 内自动循环重试。
-- 加载：独立组件并行请求；各块完成即渲染；等待期间展示按组件的提示与进度。
+- 彼此独立的调用同时发出。
+- 一块完成后就显示这一块。需求写明先取数、下一页再显示时，按需求。
+- 某次调用没有结果时，按第 3.1 节说明原因并结束这次等待。怎么做到写在该能力的「性能要求」里。
 
-### 3.3 密钥
+### 3.3 最小依赖
+
+- 不引入项目用不到的框架。优先平台与标准库。
+- 项目需求里的安装清单短于第 2 节的表时，以需求为准。
+- 持久化只用本地文件。档案与上传文件放在 `data/` 下。禁止数据库，禁止 ORM。
+
+### 3.4 密钥
 
 - 运行时密钥仅写 `.env.local`（已 gitignore，勿提交）。下文只列环境变量名称。
 - 禁止 `NEXT_PUBLIC_*` 暴露地图或 LLM 密钥。模型 id 用环境变量锁死，不依赖提供方默认模型。
 
-### 3.4 质量门槛
+### 3.5 质量门槛
 
 - 业务逻辑配单元测试；变更关键路径 100% 覆盖
 - API / 数据边界配集成测试（夹具，默认不出网）
 - 至少一条关键用户旅程用真实浏览器 E2E 覆盖
 - 测试用临时数据目录
-- 无数据库：持久化仅用 `data/` 下本地 JSON
+- 项目需求里有测试章，且短于本节时，以该章为准。
 
-### 3.5 文案与 i18n
+### 3.6 文案与 i18n
 
 用户可见文案是否使用 i18n 由该项目需求文档决定；未要求 i18n 时可直接硬编码。
 
-### 3.6 星座与天气
+### 3.7 星座与天气
 
 限流、`birthData` 与测试约束见第 1 节「星座 MCP」。与天气是否并行、同一日请求几次，由该项目的需求文档规定。
 

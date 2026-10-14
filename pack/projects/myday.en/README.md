@@ -9,13 +9,13 @@ Example target: `spikes/myday.en/`:
 ```text
 spikes/myday.en/
   prompt.md          ← prompt.md from this folder
-  .secrets           ← plaintext secrets, in place before the run
   specs/
     req-spec.md      ← req-spec.md from this folder
     tech-spec.md     ← copy from pack/tech-spec.en/tech-spec.md
+    .secrets         ← plaintext secrets, in place before the run
 ```
 
-The agent starts from those two spec files and `.secrets`. It does not add a design document. Do not commit `.secrets` or the generated `.env.local`.
+The agent starts from the requirements, the tech spec, and `.secrets` in `specs/`. Do not commit `.secrets` or the generated `.env.local`.
 
 ## Paths inside Pack
 

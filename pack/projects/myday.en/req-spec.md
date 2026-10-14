@@ -39,16 +39,16 @@ This screen is page 3. The user confirms the profile and enters the current stat
   - While the location is still unusable, do not start "today's fortune" or "today's weather", and do not enter page 4
   - User manually enters "My mood now", e.g., "excited"
   - User manually enters "What I'm doing today", e.g., "travelling"
-- After the location is usable, the user can click "Plan my day". While the location is unusable, the button cannot be clicked. The click starts "today's fortune" and "today's weather" together. After both have started, wait for them together. Do not start the second after the first finishes.
+- After the location is usable, the user can click "Plan my day". While the location is unusable, the button cannot be clicked. The click starts the natal chart and "today's weather" together. Chat starts after the chart returns. Chat does not wait for the weather. After the chart and the weather have started, wait for them together. Do not start the weather after the chart finishes, and do not start the chart after the weather finishes.
   - Fortune: using the zodiac, "My mood now", and "What I'm doing today", write "today's fortune", including things to do, things to avoid, and other playful tips. The chart location is the profile birth city, not the current location. If the birth city cannot be used, stay on this page, say the birth city must be changed, and start neither request. That step is not part of the wait. Write the fortune text with chat
   - Weather: get "today's weather" for the current location. The current location is only for weather and restaurants
 - While waiting, this page shows one line: "Preparing insights for your day"
-- If one of the two requests fails, stay on this page and say why. Do not enter page 4
+- If one of the two requests fails, stay on this page and say why. Do not enter page 4. Do not offer a retry.
 - When both succeed, enter page 4, "My day plan"
 
 ### My day plan
 
-This screen is page 4. The weather card and the zodiac card show the data page 3 already fetched. They do not fetch those two again, and they do not show "Preparing insights for your day". Outfit text and the outfit image start together. A failure in one block is explained on that block only.
+This screen is page 4. The weather card and the zodiac card show the data page 3 already fetched. They do not fetch those two again, and they do not show "Preparing insights for your day". Outfit text and the outfit image start together. A failure in one block is explained on that block only. Do not offer a retry.
 Render as a **vertical stack of section cards** (one content kind per card). Do not merge section content into one flat column, and do **not** use a multi-column dashboard grid that mixes weather / zodiac / outfit / food side by side.
 
 Each section card has: distinctive accent/surface, own heading, body, and its own loading / empty / error state.
@@ -77,6 +77,14 @@ Each section card has: distinctive accent/surface, own heading, body, and its ow
   - Display results as a **true vertical list** (not a card grid): one row per restaurant, sorted by distance, scannable on mobile and desktop. An empty result says the user can change cuisine, or return to page 3 and pick the location again. Page 4 does not change the location. After returning to page 3, a new click uses the rules above for weather and fortune. The previous page 4 results are not reused. Never a blank list
   - **Each list row must include:** restaurant name, distance, and address. Do not show rating, review count, or a review snippet
   - On restaurant row click, open a floating popup with restaurant details and that region's map for location and navigation. Close on the close control, Escape, or backdrop click
+
+### Tests
+
+- One fixture test per page. The tests do not call the network.
+- page 1: clicking a profile card enters page 3
+- page 2: a missing name does not save
+- page 3: both fetches succeed before page 4
+- page 4: weather already fetched is shown; no restaurant search runs before a cuisine is entered
 
 ### Non-functional requirements
 - Capabilities this project uses: chat, image, weather, zodiac, and Google Maps. Do not configure AMap. Do not use Pokémon or directions.
