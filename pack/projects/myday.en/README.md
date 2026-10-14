@@ -12,10 +12,10 @@ spikes/myday.en/
   specs/
     req-spec.md      ← req-spec.md from this folder
     tech-spec.md     ← copy from pack/tech-spec.en/tech-spec.md
-    .secrets         ← plaintext secrets, in place before the run
+    .secrets         ← copy from .secrets.example in this folder, then fill in the key
 ```
 
-The agent starts from the requirements, the tech spec, and `.secrets` in `specs/`. Do not commit `.secrets` or the generated `.env.local`.
+The agent starts from the requirements, the tech spec, and `.secrets` in `specs/`. Do not commit `.secrets` or the generated `.env.local`. `.secrets.example` can be committed.
 
 ## Paths inside Pack
 

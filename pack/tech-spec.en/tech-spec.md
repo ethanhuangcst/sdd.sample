@@ -63,21 +63,21 @@ Request: `POST $QUANZIL_IMAGE_URL` with `Authorization: Bearer <QUANZIL_API_KEY>
     "role": "user",
     "parts": [
       { "text": "task summary" },
-      { "inlineData": { "mimeType": "image/jpeg", "data": "<base64>" } }
+      { "inlineData": { "mimeType": "image/png", "data": "<base64>" } }
     ]
   }],
   "generationConfig": { "responseModalities": ["IMAGE"] }
 }
 ```
 
-With no user photo, `parts` contains only `text`. With a photo, include `inlineData` after server downscale (long edge ~1024px, JPEG/WebP). A read failure must error. Do not delete `inlineData` and call again.
+The reference `mimeType` is the photo's own type: `image/png`, `image/jpeg`, `image/webp`, `image/heic`, or `image/heif`. With no user photo, `parts` contains only `text`. With a photo, include `inlineData`. Shrink the long edge to about 1024px first, then base64. `mimeType` matches the resized bytes and stays one of those five types. Do not convert every photo to JPEG for the call. A read failure must error. Do not delete `inlineData` and call again.
 
 Read the image from `candidates[0].content.parts[].inlineData.data` (base64). `mimeType` is on that same object. No `inlineData` means failure.
 
 Performance:
 
 - Send the call when the photo and the short prompt are ready. On the same wait, do not place a chat call ahead of the image.
-- Convert the reference to JPEG or WebP and limit the long edge to about 1024px, then send it. Do not shrink it further to save time. The output stays about 1024×1024, and a smaller reference does not shorten generation.
+- Shrink the reference long edge to about 1024px, then send it at once. Keep the photo's original type. Do not shrink it further to save time, and do not convert it to JPEG for the call. The output stays about 1024×1024, and a smaller reference does not shorten generation.
 - Do not set `imageConfig.imageSize`. `512` returns 400.
 - Wait for the image on its own. Do not cut it off with the short wait used for maps or weather.
 

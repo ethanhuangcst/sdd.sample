@@ -91,7 +91,7 @@ Each section card has: distinctive accent/surface, own heading, body, and its ow
 - Install for this demo: Next.js, React, TypeScript, Tailwind, and Vitest for the tests. Store data under `data/`. Do not install React Query, Zustand, RHF, or Playwright.
 
 ## UI guidelines
-Tone: **clean, neat, fun** — a light morning desk for planning the day, not a dense dashboard or marketing landing page.
+Tone: **clean, casual, fun** — a light morning desk for planning the day, not a dense dashboard or marketing landing page.
 
 ### Visual direction
 - **Palette (CSS variables):** Paper `#F7F9FC` · Mist `#E8F1F8` · Ink `#1B2430` · Soft slate `#5B6B7C` · Sun `#F4A261` (primary CTA / progress accent) · Fresh `#2BB673` (success only)

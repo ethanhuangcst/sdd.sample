@@ -11,8 +11,8 @@
 2. Read these three files.
 3. Read the plaintext secrets from `specs/.secrets` and write the variables you use into `.env.local`. If a variable this project needs is empty, that is a block.
 4. If there is no runnable Next.js app yet, scaffold a minimal app from the install list in Non-functional requirements in `specs/req-spec.md`. Use a non-interactive command. Do not stop on the scaffold prompts. Do not move the app because the directory is not empty.
-5. Install dependencies with the npm registry rules in `specs/tech-spec.md`.
-6. Send one short request for each of these: chat, Open-Meteo, zodiac, and Google geocoding. If one of them fails, that is a block.
+5. Install dependencies with the npm registry in `specs/tech-spec.md` that matches the current location.
+6. Send one short request for each capability named in `specs/req-spec.md`, except image. Image is used on page 4. If one of them fails, that is a block.
 
 # Build
 

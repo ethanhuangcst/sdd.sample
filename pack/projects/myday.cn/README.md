@@ -12,10 +12,10 @@ spikes/myday.cn/
   specs/
     req-spec.md      ← 本目录的 req-spec.md
     tech-spec.md     ← 从 pack/tech-spec.cn/tech-spec.md 复制
-    .secrets         ← 运行前放好，密钥明文
+    .secrets         ← 由本目录的 .secrets.example 复制，只填写 Key
 ```
 
-代理从 `specs/` 里的需求、技术规格和 `.secrets` 开工。`.secrets` 与生成的 `.env.local` 都不提交。
+代理从 `specs/` 里的需求、技术规格和 `.secrets` 开工。`.secrets` 与生成的 `.env.local` 都不提交。`.secrets.example` 可以提交。
 
 ## Pack 内路径
 
