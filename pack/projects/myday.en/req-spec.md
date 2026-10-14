@@ -1,16 +1,16 @@
 # MyDay Web App
 
-> Layout, the zodiac 2×2 grid, and i18n keys in this file are the English UI. Providers, models, and maps are in `specs/tech-spec.md`.
+> Layout and the zodiac 2×2 grid in this file are the English UI. This demo writes that UI in English. Providers and maps are in `specs/tech-spec.md`.
 
 - A daily planning web app. It helps users start their day with personalized recommendations.
 - This app does not serve mainland China. Maps use Google Maps only. Do not configure AMap. The request contracts are in `specs/tech-spec.md`.
-- Decide whether a place is in mainland China from the Google geocode result, not from a latitude and longitude box. Reverse-geocode a browser location once. A typed place uses the forward geocode result. When the place is in mainland China, show "Google Maps does not support this place", stay on page 3, and do not start fortune or weather. Geocode the birth city with Google. If that city is in mainland China, show the same message and start neither request.
+- A browser location and a typed place are both checked first. When the place is in mainland China, show "Google Maps does not support this place", stay on page 3, and do not start fortune or weather. When the birth city is in mainland China, show the same message and start neither request.
 
 ## Overview
 - Page 1, "Profile list": show the existing profile cards
 - Page 2, "Create a new profile": the user enters personal details and saves a profile. After a successful save, return to page 1. The new profile appears in the list
-- Page 3, "Plan my day": the user enters today's mood and activity, and the app gets the location (automatic, or a typed city when the location fails or is too coarse). After the location is usable, the user clicks "Plan my day" to get "today's fortune" and "today's weather"
-- Page 4, "My day plan": show the fortune and weather from page 3. Generate today's outfit as text and as a portrait. After the user picks a cuisine, list nearby restaurants for the page 3 location
+- Page 3, "Plan my day": the user enters today's mood and activity, and the app gets the location (automatic, or a typed city when the location fails). After the location is usable, the user clicks "Plan my day" to get "today's fortune" and "today's weather"
+- Page 4, "My day plan": show the fortune and weather from page 3. Generate today's outfit as text and as a portrait. After the user enters a cuisine, list nearby restaurants for the page 3 location
 
 ## Requirement
 ### Profile List
@@ -22,13 +22,9 @@
 ### Create a new profile
 - User enters personal details
   - Name (required)
-  - Gender
   - Birth city (required). One city, for example "Singapore"
   - Date of birth (required)
   - Upload a photo of yourself (required)
-  - Height
-  - Weight
-  - Occupation
 - Clicks "Save". If name, birth city, date of birth, or photo is missing, do not save. Stay on page 2 and mark the missing item. After a successful save, return to page 1. The new profile appears in the list
 
 ### Plan my day
@@ -36,26 +32,26 @@
 This screen is page 3. The user confirms the profile and enters the current status here. This page only fetches "today's fortune" and "today's weather". Do not show them here. Show them on page 4, "My day plan". Enter page 4 only after both fetches succeed.
 
 - Render **My profile** and **What am I into?** as separate full-width **section cards** stacked top → bottom (same visual language as My day plan)
-- "My profile" section: view and edit the profile, including "Delete". After an edit is saved, stay on this page. If fortune or weather has already started, that edit does not run them again. Deletion needs a second confirmation. After confirmation, that profile leaves the list and the user returns to page 1, "Profile list". If "today's fortune" or "today's weather" is still in progress, stop both. Their completion does not enter page 4
+- "My profile" section: show the current profile's name and photo. Do not edit or delete on this page
 - "What am I into?" section:
-  - Get the current location (default: the browser). Treat the location as unusable when it fails, when accuracy is greater than 8000 meters, or when the coordinates are about `35.86, 104.20` (within about 0.05 degrees). Then require a manual city or district
+  - Get the current location (default: the browser). When the location fails, require a manual city or district
   - Turn a typed city into a usable location first. That step is not part of the wait for fortune and weather. If the city cannot be resolved, stay on this page and say it must be entered again. The click starts neither request
   - While the location is still unusable, do not start "today's fortune" or "today's weather", and do not enter page 4
   - User manually enters "My mood now", e.g., "excited"
   - User manually enters "What I'm doing today", e.g., "travelling"
-- After the location is usable, the user clicks "Plan my day" to start "today's fortune" and "today's weather" together. If the location is still unusable, the click starts neither and does not enter page 4. After both have started, wait for them together. Do not start the second after the first finishes.
-  - Fortune: using the zodiac, "My mood now", and "What I'm doing today", write "today's fortune", including things to do, things to avoid, and other playful tips. The chart location is the profile birth city, not the current location. On click, resolve that city to coordinates first, with timezone `Asia/Shanghai`. If it cannot be resolved, stay on this page, say the birth city must be changed, and start neither request. That step is not part of the wait. For one profile on one day, call `calculate_natal_chart` once. Write the fortune text with the chat model. Do not call `get_current_transits`. On a later click, rewrite the fortune from that zodiac data plus the mood and activity at that time. After the two requests have started, a later edit of the birth city does not fetch the chart again
-  - Weather: get "today's weather" for the current location. On a later click, fetch weather again for the usable location. The current location is only for weather and restaurants
-- For about 10 seconds, this page shows one line: "Preparing insights for your day". After about 10 seconds, replace that line with "more time is needed" and keep waiting
-- If one of the two requests fails, stay on this page. Mark the failed request and offer a retry. A click retries only that request. Do not retry automatically. Keep the one that succeeded. Do not enter page 4
+- After the location is usable, the user can click "Plan my day". While the location is unusable, the button cannot be clicked. The click starts "today's fortune" and "today's weather" together. After both have started, wait for them together. Do not start the second after the first finishes.
+  - Fortune: using the zodiac, "My mood now", and "What I'm doing today", write "today's fortune", including things to do, things to avoid, and other playful tips. The chart location is the profile birth city, not the current location. If the birth city cannot be used, stay on this page, say the birth city must be changed, and start neither request. That step is not part of the wait. Write the fortune text with chat
+  - Weather: get "today's weather" for the current location. The current location is only for weather and restaurants
+- While waiting, this page shows one line: "Preparing insights for your day"
+- If one of the two requests fails, stay on this page and say why. Do not enter page 4
 - When both succeed, enter page 4, "My day plan"
 
 ### My day plan
 
-This screen is page 4. The weather card and the zodiac card show the data page 3 already fetched. They do not fetch those two again, and they do not show "Preparing insights for your day" or "more time is needed" for those two. Outfit text, the outfit image, and restaurants each show their own progress. A failure in one of those three affects only that block. That block offers a retry. A click retries only that block. Do not retry automatically.
+This screen is page 4. The weather card and the zodiac card show the data page 3 already fetched. They do not fetch those two again, and they do not show "Preparing insights for your day". Outfit text and the outfit image start together. A failure in one block is explained on that block only.
 Render as a **vertical stack of section cards** (one content kind per card). Do not merge section content into one flat column, and do **not** use a multi-column dashboard grid that mixes weather / zodiac / outfit / food side by side.
 
-Each section card has: distinctive accent/surface, own heading (i18n), body, and its own loading / empty / error state.
+Each section card has: distinctive accent/surface, own heading, body, and its own loading / empty / error state.
 
 - **Header** section card
   - "Hello, {name}" + photo if any
@@ -68,18 +64,16 @@ Each section card has: distinctive accent/surface, own heading (i18n), body, and
     2. **Things to do** — actionable suggestions
     3. **Things to avoid** — gentle cautions
     4. **Playful tips** — one or more fun tips
-  - Each of the four cards has its own heading (i18n) and body; stack to one column on narrow mobile if needed, 2 columns from `sm` up
+  - Each of the four cards has its own heading and body; stack to one column on narrow mobile if needed, 2 columns from `sm` up
   - The four cards show the fortune from page 3.
 - **Outfit recommendation** section card. Use "today's weather", "today's fortune", "My mood now", and "What I'm doing today" from page 3. Start the text and the image together. Neither waits for the other.
   - Outfit text: write the recommendation and display it as text
-  - Outfit image: a portrait in today's outfit. Use the profile photo as the person. If the photo cannot be read, show an error. A click retries. Do not retry automatically. Never generate the portrait without that photo.
+  - Outfit image: a portrait in today's outfit. Use the profile photo as the person. If the photo cannot be read, show an error. Never generate the portrait without that photo.
   - Ensure the image is properly displayed with the visibility of the whole body (portrait aspect)
-  - Target completion within **20 seconds**; if still working after ~10s, show “more time is needed” (never the word “Timeout”)
-  - If image generation fails, show a clear per-section error + retry; text outfit can still display — **never fail silently**
 - **What to eat today** section card
-  - Let the user choose a cuisine (Japanese, Spanish, Italian, fast food, Cantonese, etc.). Do not search before a cuisine is chosen
+  - The user enters a cuisine as text. Do not search before the user enters one
   - Use the location already obtained on page 3. Page 4 does not request the location again.
-  - Call Google `searchText` with the example body in the tech spec. Set `textQuery` to the cuisine word: Japanese, Spanish, Italian, fast food, or Cantonese. Set `radius` to 3000. Stop when there is a result. Do not increase the radius, and do not send a second query shape. When a place photo exists, show it. If there is no photo, do not show a broken image.
+  - Search with the `searchText` example in the tech spec. `textQuery` is the text the user entered. The range is 3 km. Do not increase the radius. When a place photo exists, show it. If there is no photo, do not show a broken image.
   - Display results as a **true vertical list** (not a card grid): one row per restaurant, sorted by distance, scannable on mobile and desktop. An empty result says the user can change cuisine, or return to page 3 and pick the location again. Page 4 does not change the location. After returning to page 3, a new click uses the rules above for weather and fortune. The previous page 4 results are not reused. Never a blank list
   - **Each list row must include:** restaurant name, distance, and address. Do not show rating, review count, or a review snippet
   - On restaurant row click, open a floating popup with restaurant details and that region's map for location and navigation. Close on the close control, Escape, or backdrop click
@@ -87,9 +81,6 @@ Each section card has: distinctive accent/surface, own heading (i18n), body, and
 ### Non-functional requirements
 - Capabilities this project uses: chat, image, weather, zodiac, and Google Maps. Do not configure AMap. Do not use Pokémon or directions.
 - Install for this demo: Next.js, React, TypeScript, Tailwind, and Vitest for the tests. Store data under `data/`. Do not install React Query, Zustand, RHF, or Playwright.
-- On page 3, for about 10 seconds show one line: "Preparing insights for your day". After about 10 seconds, replace that line with "more time is needed" and keep waiting. If one request fails, stay on this page. A click retries only the failed request. Do not retry automatically
-- On page 4, weather and zodiac show the page 3 results and do not show those two lines. Outfit text, the outfit image, and restaurants each show their own progress. Show a block when that block is ready. A failure in one block affects only that block. Each of those three keeps its own timer and, after about 10 seconds, shows "more time is needed" while it continues
-- Target: each block that is still loading is ready within 20 seconds. At about 10 seconds, do not switch in a different result
 
 ## UI guidelines
 Tone: **clean, neat, fun** — a light morning desk for planning the day, not a dense dashboard or marketing landing page.
@@ -109,18 +100,18 @@ Tone: **clean, neat, fun** — a light morning desk for planning the day, not a 
 - **Signature:** the progressive “day assembling” reveal — each stacked section card loads and appears on its own with light progress tips, not a single loading spinner for the whole page
 
 ### Page sections
-Every screen stacks discrete section cards. Each has one purpose, one title (i18n key), and its own loading / empty / error state.
+Every screen stacks discrete section cards. Each has one purpose, one title, and its own loading / empty / error state.
 
 | Screen | Sections (top → bottom) |
 | --- | --- |
 | Profile list | Header · Profile card grid · Create profile action |
-| Create / edit profile | Header · Profile form section card · Save action |
+| Create a profile | Header · Profile form section card · Save action |
 | Plan my day | Header · My profile section card · What am I into? section card · Plan my day action |
 | My day plan | Header · Weather · Zodiac insights · Outfit recommendation · What to eat today — each a full-width stacked section card with its own tone |
 
 ### Interaction & copy
 - Primary actions use plain verbs that match outcomes (e.g. Save → saved confirmation; Plan my day → day plan)
-- Empty, loading, and error states explain what to do next. Never show the word “Timeout”. Say more time is needed. A failed section shows its own message.
-- All user-facing strings are **i18n keys** (default locale + at least one additional locale path); no hard-coded UI copy
+- Empty, loading, and error states explain what to do next. Never show the word “Timeout”. A failed section shows its own message.
+- Write the UI in English. This demo does not add a second locale.
 - Keyboard: visible focus, Escape / backdrop closes dialogs; status is not color-only
 - Desktop and mobile: no clipped controls; restaurant list rows stay full-width and scannable (image + text), never a restaurant card grid

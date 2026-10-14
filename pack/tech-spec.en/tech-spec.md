@@ -6,7 +6,7 @@ This document defines the stack, third-party capabilities, and cross-cutting imp
 
 Wire only what the project needs. There is no reviews provider. Failure semantics, performance, and secrets are in section 3.
 
-### Chat
+### Chat LLM
 
 **Same in all regions.** Provider: **Quanzil** (OpenAI-compatible chat completions). One `QUANZIL_API_KEY` shared with image generation. Chat uses the `openai` SDK. The image request shape is in the next section.
 
@@ -42,7 +42,7 @@ Key pitfalls:
 - Pass `QUANZIL_API_KEY` and `QUANZIL_BASE_URL` into the client constructor. Do not set `OPENAI_API_KEY` or `OPENAI_BASE_URL`; the SDK reads those by default and calls `api.openai.com`
 - Use `max_completion_tokens`, not `max_tokens`
 
-### Image generation
+### Image generation LLM
 
 **Same in all regions.** Same `QUANZIL_API_KEY` as Chat. Call Gemini `generateContent`, not the `openai` SDK images methods.
 
@@ -105,6 +105,17 @@ Key pitfalls:
 - Geocoding is `/v3`. Text search, nearby search, and walking directions are `/v5`. Do not set one `AMAP_BASE_URL=/v3` for every call
 - Browser geolocation and Open-Meteo use WGS-84. AMap REST uses GCJ-02. Convert between WGS-84 and GCJ-02 in project code, and do not add a dependency for it. Convert AMap coordinates to WGS-84 before deciding whether the place is in mainland China, and before the natal chart and weather. Keep the original GCJ-02 coordinates for restaurant search. A typed city from AMap is already GCJ-02
 - Decide mainland China from the geocode admin result, not from a latitude and longitude box. Reverse-geocode browser coordinates with `GET /v3/geocode/regeo?location={longitude},{latitude}` first. An `adcode` starting with 71, 81, or 82 is Taiwan, Hong Kong, or Macau, and is not mainland China. An empty forward-geocode result is a failed resolve
+
+##### Nearby dining search
+
+Use this when a project searches nearby restaurants by cuisine. Whether the radius may grow is decided by that project's requirements.
+
+- Call `GET /v5/place/around`, not `/v5/place/text`
+- `location` is GCJ-02, ordered longitude,latitude. `radius` is meters
+- Dining is `types=050000`
+- The search word is the text the user entered
+- Stop at the first non-empty result: search word plus `types=050000`, then the search word only, then `types=050000` only
+- When the requirements do not say the range may grow, do not increase `radius` and search again
 
 #### Hong Kong and Macau
 
@@ -289,7 +300,7 @@ Majors below (reference date 2026-10). Pin exact patch versions in your project'
 | AI SDK | `openai` SDK for chat only (Quanzil chat completions). Image is Gemini `generateContent` — section 1 | 7.x (6→7 has breaking changes; walk the official migration guide) |
 | Test | Vitest · RTL · Playwright | 5.x · 16.x · 1.64 |
 
-Rules: minimal dependencies; prefer the platform and stdlib; **no database** (local JSON under `data/` only unless a project spec says otherwise). npm registry: section 1.
+Rules: minimal dependencies; prefer the platform and stdlib; **no database** (local JSON under `data/` only unless a project spec says otherwise). npm registry: section 1. When a project's install list is shorter than this table, follow the requirements.
 
 ## 3. Cross-cutting contracts
 

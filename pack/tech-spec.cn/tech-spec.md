@@ -8,7 +8,7 @@
 
 地区写法：`所有地区` 含中国大陆、香港、澳门与其他地区。只服务部分地区的能力会写明范围。
 
-### 对话
+### 对话 LLM
 
 #### 地区：所有地区
 
@@ -52,7 +52,7 @@ const text = completion.choices[0]?.message?.content ?? "";
 
 ---
 
-### 图像生成
+### 图像生成 LLM
 
 #### 地区：所有地区
 
@@ -120,6 +120,17 @@ AMAP_HOST=https://restapi.amap.com
 - 地理编码在 `/v3`，关键字搜索、周边搜索、步行路线在 `/v5`。禁止设置单一 `AMAP_BASE_URL=/v3` 覆盖全部接口
 - 浏览器定位与 Open-Meteo 用 WGS-84；高德 REST 用 GCJ-02。WGS-84 与 GCJ-02 自行换算，不新增依赖。判断是否在中国大陆、写入星盘和天气之前，先把高德坐标转成 WGS-84。查餐厅仍用原来的 GCJ-02。手输城市的高德结果已是 GCJ-02
 - 是否在中国大陆，用地理编码返回的行政区判断，不写经纬度方框。浏览器坐标先走 `GET /v3/geocode/regeo?location={经度},{纬度}`。`adcode` 以 71、81、82 开头分别是台湾、香港、澳门，都不是中国大陆。正向地理编码没有结果时，按解析失败处理
+
+##### 周边餐饮检索
+
+项目要按菜系找附近餐厅时用这一节。半径是否扩大由该项目的需求决定。
+
+- 用 `GET /v5/place/around`，不用 `/v5/place/text`
+- `location` 为 GCJ-02，顺序是经度,纬度。`radius` 的单位是米
+- 餐饮类型为 `types=050000`
+- 检索词用用户输入的文字
+- 有结果就停：先检索词加 `types=050000`，再只检索词，最后只 `types=050000`
+- 需求没有写明可以扩大范围时，不要加大 `radius` 再查
 
 #### 地区：中国大陆以外（Google Maps）
 
@@ -322,7 +333,7 @@ TCGDEX_BASE_URL=https://api.tcgdex.net/v2
 | AI SDK | `openai` SDK 仅用于对话（Quanzil chat completions）。图像为 Gemini `generateContent`，见第 1 节 | 7.x（6→7 有 breaking changes，升级时过官方迁移指南） |
 | 测试 | Vitest · RTL · Playwright | 5.x · 16.x · 1.64 |
 
-规则：尽量少依赖；优先平台与标准库；**禁止数据库**（除非项目规格另有说明，否则仅用 `data/` 下本地 JSON）。npm 镜像见第 1 节。
+规则：尽量少依赖；优先平台与标准库；**禁止数据库**（除非项目规格另有说明，否则仅用 `data/` 下本地 JSON）。npm 镜像见第 1 节。项目需求里的安装清单短于本表时，以需求为准。
 
 ## 3. 通用契约（所有项目、所有能力）
 
