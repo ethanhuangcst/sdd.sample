@@ -9,15 +9,19 @@
 ```text
 spikes/myday.cn/
   prompt.md          ← 本目录的 prompt.md
+  web/               ← Next.js 工程，由 prompt 在空目录里创建
+    .env.local       ← 人事先放入。代理不读 .secrets，也不写这个文件
   specs/
-    req-spec.md      ← 本目录的 req-spec.md
-    tech-spec.md     ← 从 pack/tech-spec.cn/tech-spec.md 复制
-    .secrets         ← 由本目录的 .secrets.example 复制，只填写 Key
+    req-spec.md      ← 本目录的 req-spec-amap.md 或 req-spec-gmap.md，只复制一份
+    tech-spec.md     ← 与需求成对：tech-spec-amap.md 或 tech-spec-gmap.md，只复制一份
+    test-img.png     ← 本目录 specs/test-img.png，验收时文件框无法操作就用这张
 ```
 
-代理从 `specs/` 里的需求、技术规格和 `.secrets` 开工。`.secrets` 与生成的 `.env.local` 都不提交。`.secrets.example` 可以提交。
+代理从 `specs/` 里的需求和技术规格开工。密钥只读 `web/.env.local`。`.env.local` 不提交。
 
 ## Pack 内路径
 
-- 共用技术规格：`pack/tech-spec.cn/tech-spec.md`
-- 本种子需求：`pack/projects/myday.cn/req-spec.md`
+- 中国大陆演示：`req-spec-amap.md` 配 `tech-spec-amap.md`
+- 中国大陆以外的中文演示：`req-spec-gmap.md` 配 `tech-spec-gmap.md`
+- 一次运行只复制一对，分别命名为 `specs/req-spec.md` 和 `specs/tech-spec.md`
+- 共用全文：`pack/tech-spec.cn/tech-spec.md`

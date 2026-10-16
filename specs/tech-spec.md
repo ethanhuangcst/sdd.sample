@@ -209,6 +209,12 @@ GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.locatio
 
 ### npm 镜像
 
+准备工程时，按当前位置安装依赖。尚无 `package.json` 时，先按项目需求建工程，再安装。
+
+- 中国大陆、香港和澳门用下面的 npmmirror 命令。
+- 其他地区用下面的 npmjs.org 命令。
+- 已有 lockfile 时用 `npm ci`。还没有 lockfile 时，用 `npm install` 只为生成 lockfile。
+
 #### 地区：中国大陆、香港和澳门
 
 ##### 环境配置
@@ -387,6 +393,8 @@ TCGDEX_BASE_URL=https://api.tcgdex.net/v2
 
 ### 3.4 密钥
 
+- 开工时从 `specs/.secrets` 读取本项目用到的变量，把明文写入 `.env.local`。只写用到的变量。
+- 本项目需要的变量为空，则停止。
 - 运行时密钥仅写 `.env.local`（已 gitignore，勿提交）。下文只列环境变量名称。
 - 禁止 `NEXT_PUBLIC_*` 暴露地图或 LLM 密钥。模型 id 用环境变量锁死，不依赖提供方默认模型。
 

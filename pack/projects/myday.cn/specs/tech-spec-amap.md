@@ -1,0 +1,130 @@
+# MyDay 技术规格
+
+
+##  1.原则
+- 在工作区根目录工作。不要参考其他项目。不要把代码或文档写到本工作区以外。
+- 工作区根目录只放两样：`specs/`，以及工程目录 `web/`。Next.js 代码只放在 `web/`。
+- 不做数据存储，不写 `data/`。
+- 只安装必需依赖项，不安装 React Query、Zustand、RHF、Playwright。
+
+## 2.技术栈
+
+| 用途 | 技术 |
+| --- | --- |
+| 应用 | Next.js 16、React 19、TypeScript、Tailwind CSS 4 |
+| 对话 | `openai` SDK，Quanzil chat completions |
+| 图像 | Gemini `generateContent`，不用 `openai` 的 images 方法 |
+| 测试 | Vitest |
+
+
+## 3.能力
+
+### 对话
+
+```env
+QUANZIL_API_KEY=
+QUANZIL_BASE_URL=https://quanzil.com/v1
+QUANZIL_CHAT_MODEL=gpt-6-astra
+```
+
+用 `openai` SDK，创建时传入上面的 Key 和 base URL。不要再设置 `OPENAI_API_KEY` 或 `OPENAI_BASE_URL`。用 `max_completion_tokens`，不用 `max_tokens`。`choices[0].message.content` 为空即失败。
+
+### 图像
+
+```env
+QUANZIL_IMAGE_MODEL=gemini-3.1-flash-lite-image
+QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent
+```
+
+`POST` 该 URL。请求头 `Authorization: Bearer <QUANZIL_API_KEY>`。正文带 `generationConfig.responseModalities: ["IMAGE"]`。有照片时 `parts` 含文本和 `inlineData`。`mimeType` 用照片本身的类型：`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`。先把长边缩到约 1024px。1×1 图片会 400。不要设置 `imageConfig.imageSize`。结果在 `candidates[0].content.parts[].inlineData`。没有 `inlineData` 即失败。读不到照片就报错，禁止改成不带照片的请求。
+
+### 高德
+
+```env
+AMAP_API_KEY=
+AMAP_HOST=https://restapi.amap.com
+```
+
+- 正向地理编码：`GET {AMAP_HOST}/v3/geocode/geo?address={地址}&key=`
+- 周边餐饮：`GET {AMAP_HOST}/v5/place/around?location={经度},{纬度}&keywords={菜系}&types=050000&radius=5000&key=`
+- HTTP 200 且 `status` 为 `1`、`infocode` 为 `10000` 才算成功
+- 坐标顺序是经度,纬度。高德结果是 GCJ-02
+- 餐厅检索用原来的 GCJ-02。发给 Open-Meteo 之前，用公开的 GCJ-02 转 WGS-84 迭代在本地换算，不安装坐标库。中国境外的坐标不必换算
+- 只发上面这一次周边检索。名称、距离、地址、类型、电话用这一次的返回。不按行再请求详情
+- 浏览器打开 `https://uri.amap.com/marker?position=经度,纬度`。不加载 JS API
+- Key 只放查询参数，只在服务端使用
+
+### 天气
+
+-
+  ```env
+  OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
+  ```
+
+- `GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,weather_code`。坐标为 WGS-84。用已经得到的坐标，不要为了天气再定位一次。
+- `weather_code` 按下表译成中文后再显示。表里没有的显示「未知」。不要为了翻译再请求别的接口。
+
+| 代码 | 中文 |
+| --- | --- |
+| 0 | 晴 |
+| 1 | 大部晴朗 |
+| 2 | 局部多云 |
+| 3 | 阴 |
+| 45 | 雾 |
+| 48 | 雾凇 |
+| 51 | 小毛毛雨 |
+| 53 | 毛毛雨 |
+| 55 | 大毛毛雨 |
+| 56 | 冻毛毛雨 |
+| 57 | 强冻毛毛雨 |
+| 61 | 小雨 |
+| 63 | 中雨 |
+| 65 | 大雨 |
+| 66 | 冻雨 |
+| 67 | 强冻雨 |
+| 71 | 小雪 |
+| 73 | 中雪 |
+| 75 | 大雪 |
+| 77 | 雪粒 |
+| 80 | 小阵雨 |
+| 81 | 阵雨 |
+| 82 | 强阵雨 |
+| 85 | 小阵雪 |
+| 86 | 阵雪 |
+| 95 | 雷暴 |
+| 96 | 雷暴伴小冰雹 |
+| 99 | 雷暴伴大冰雹 |
+
+
+
+## 4.安装
+
+### 第一步：安装依赖项
+
+- 尚无 `web/package.json` 时，在工作区根目录执行下面这一条。`web/` 不存在或是空目录都可以。不要停在创建工具的提问上。
+  中国大陆、香港、澳门：
+
+  ```
+  npm_config_registry=https://registry.npmmirror.com npx create-next-app@16 web --yes --ts --tailwind --eslint --app --no-src-dir --use-npm
+  ```
+
+  其他地区：同一条命令，不设置 `npm_config_registry`。
+  这条命令会自己安装 Next.js 依赖。不要在它之后再无目的地执行 `npm install`。
+- 然后在 `web/` 安装本项目额外的包。中国大陆、香港、澳门加上 `--registry=https://registry.npmmirror.com`：
+
+  ```
+  npm install openai
+  npm install -D vitest jsdom @testing-library/react @testing-library/jest-dom
+  ```
+
+- 已有 `web/package.json` 和 `web/package-lock.json` 时，不要再跑 `create-next-app`。在 `web/` 执行 `npm ci`。不要用 `npm install` 改写已有 lockfile。lockfile 里还没有上面这些包时，再按那两条安装命令补上。
+- peer 依赖失败时，给失败的那条 `npm install` 加上 `--legacy-peer-deps` 再装一次。不要改 `@types/node` 的版本。
+
+### 第二步：生成密钥
+
+- 密钥在 `specs/.secrets`。这个文件由人事先放好。
+- 只复制「3.能力」代码块里的变量名，从 `specs/.secrets` 写入 `web/.env.local`。`.secrets` 里多出来的变量不写。需要的变量不存在或为空则停止。禁止 `NEXT_PUBLIC_*`。回复、日志和浏览器响应里不出现密钥。
+
+## 5.调用顺序
+
+彼此独立的调用同时发出。一块完成就显示这一块。穿搭图等待穿搭文字，这是需求里的依赖，不是把其他对话排在它前面。失败只说明这一块。不自动重试。

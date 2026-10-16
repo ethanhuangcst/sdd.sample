@@ -195,6 +195,12 @@ Same as **Hong Kong and Macau** (Google Maps and the env block and pitfalls abov
 
 ### npm registry
 
+At the start of project setup, install dependencies for the current location. When `package.json` is not there yet, create the app from the project requirements, then install.
+
+- Mainland China, Hong Kong, and Macau use the npmmirror commands below.
+- Other regions use the npmjs.org commands below.
+- When a lockfile exists, use `npm ci`. When it does not, use `npm install` only to create the lockfile.
+
 #### Mainland China
 
 ```bash
@@ -354,6 +360,8 @@ Dependencies and persistence are in section 3.3. npm registry: section 1. TypeSc
 
 ### 3.4 Secrets
 
+- At the start of work, read the variables this project uses from `specs/.secrets` and write the plaintext values into `.env.local`. Write only the variables this project uses.
+- If a variable this project needs is empty, stop.
 - Runtime keys only in `.env.local` (gitignored; never commit). Env var names are listed below.
 - No `NEXT_PUBLIC_*` exposure of map or LLM keys. Lock model ids in env; do not rely on a provider default model.
 

@@ -88,6 +88,8 @@ Each section card has: distinctive accent/surface, own heading, body, and its ow
 
 ### Acceptance test
 
+Develop along the path below. When one step works, write the next step.
+
 After the four fixture tests pass, run `npm run dev`. Walk the path below once in the browser. After it passes, give the local URL in the reply, then stop.
 
 - Open the profile list. Open create profile and click Save with every field empty. The page stays on create profile and marks name, birth city, date of birth, and photo as missing.
