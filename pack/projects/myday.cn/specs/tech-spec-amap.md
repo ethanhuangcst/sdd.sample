@@ -56,10 +56,9 @@ AMAP_HOST=https://restapi.amap.com
 
 ### 天气
 
--
-  ```env
-  OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
-  ```
+```env
+OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
+```
 
 - `GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,weather_code`。坐标为 WGS-84。用已经得到的坐标，不要为了天气再定位一次。
 - `weather_code` 按下表译成中文后再显示。表里没有的显示「未知」。不要为了翻译再请求别的接口。
@@ -95,23 +94,17 @@ AMAP_HOST=https://restapi.amap.com
 | 96 | 雷暴伴小冰雹 |
 | 99 | 雷暴伴大冰雹 |
 
-
-
 ## 4.安装
 
 ### 第一步：安装依赖项
 
-- 尚无 `web/package.json` 时，在工作区根目录执行下面这一条。`web/` 不存在或是空目录都可以。不要停在创建工具的提问上。
-  中国大陆、香港、澳门：
-
+- 尚无 `web/package.json` 时，在工作区根目录执行下面这一条。`web/` 不存在或是空目录都可以。不要停在创建工具的提问上。中国大陆、香港、澳门：
   ```
   npm_config_registry=https://registry.npmmirror.com npx create-next-app@16 web --yes --ts --tailwind --eslint --app --no-src-dir --use-npm
   ```
-
   其他地区：同一条命令，不设置 `npm_config_registry`。
   这条命令会自己安装 Next.js 依赖。不要在它之后再无目的地执行 `npm install`。
 - 然后在 `web/` 安装本项目额外的包。中国大陆、香港、澳门加上 `--registry=https://registry.npmmirror.com`：
-
   ```
   npm install openai
   npm install -D vitest jsdom @testing-library/react @testing-library/jest-dom

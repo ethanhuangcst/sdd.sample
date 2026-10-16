@@ -9,15 +9,16 @@
 ```text
 spikes/myday.cn/
   prompt.md          ← 本目录的 prompt.md
-  web/               ← Next.js 工程，由 prompt 在空目录里创建
-    .env.local       ← 人事先放入。代理不读 .secrets，也不写这个文件
   specs/
-    req-spec.md      ← 本目录的 req-spec-amap.md 或 req-spec-gmap.md，只复制一份
+    prompt.md        ← 本目录 specs/prompt.md
+    req-spec.md      ← req-spec-amap.md 或 req-spec-gmap.md，只复制一份
     tech-spec.md     ← 与需求成对：tech-spec-amap.md 或 tech-spec-gmap.md，只复制一份
-    test-img.png     ← 本目录 specs/test-img.png，验收时文件框无法操作就用这张
+    .secrets         ← .secrets.amap 或 .secrets.gmap，只复制一份并改名
+    test-img.png     ← 验收时文件框无法操作就用这张
+  web/               ← Next.js 工程，由 tech-spec 安装步骤创建
 ```
 
-代理从 `specs/` 里的需求和技术规格开工。密钥只读 `web/.env.local`。`.env.local` 不提交。
+代理从 `specs/` 里的 prompt、需求、技术规格和 `.secrets` 开工。安装时把 `.secrets` 写入 `web/.env.local`。`.secrets` 与 `.env.local` 都不提交。
 
 ## Pack 内路径
 
