@@ -23,7 +23,7 @@ The user must complete every field below before submitting. If location cannot b
 
 - Name. Used for greeting, for example "Hello, Alex"
 - Gender. One of: Male, Female, Prefer not to say
-- Birth date. Used for age and zodiac sign. The date must not be after today in the browser. Age uses the computed local calendar date; subtract one year if this year's birthday has not occurred yet. Zodiac uses Gregorian month and day only, not birth time. Boundaries: Capricorn 12/22–1/19, Aquarius 1/20–2/18, Pisces 2/19–3/20, Aries 3/21–4/19, Taurus 4/20–5/20, Gemini 5/21–6/21, Cancer 6/22–7/22, Leo 7/23–8/22, Virgo 8/23–9/22, Libra 9/23–10/23, Scorpio 10/24–11/22, Sagittarius 11/23–12/21
+- Birth date. Used for age and zodiac sign. The date must not be after today in the browser. Age uses the computed local calendar date; subtract one year if this year's birthday has not occurred yet. Zodiac uses Gregorian month and day only, not birth time.
 - What I am doing today. For example "traveling"
 - My mood now. For example "excited"
 - My location now. For example "Shanghai Aegean". Hint beside the field: "A more precise place gives better recommendations"

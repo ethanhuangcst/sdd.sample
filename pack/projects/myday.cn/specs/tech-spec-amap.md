@@ -54,13 +54,29 @@ AMAP_HOST=https://restapi.amap.com
 - 浏览器打开 `https://uri.amap.com/marker?position=经度,纬度`。不加载 JS API
 - Key 只放查询参数，只在服务端使用
 
+### 时区
+
+地理编码成功后，用返回的 `adcode` 映射 IANA 时区 id。不请求时区接口，不安装 `geo-tz`、`tz-lookup` 或同类包。
+
+| `adcode` 前缀 | IANA |
+| --- | --- |
+| 65 | `Asia/Urumqi` |
+| 81 | `Asia/Hong_Kong` |
+| 82 | `Asia/Macau` |
+| 71 | `Asia/Taipei` |
+| 其他已成功的结果 | `Asia/Shanghai` |
+
+- 用 `Intl.DateTimeFormat`，`timeZone` 设为上表的 IANA，算出该地点的当地日期和时间。不要用浏览器系统时区代替。不要用经度除以 15 估算。
+- 周岁里的「今天」用这个 IANA 的当地日历日期。未到今年生日则减一岁。
+- 进入第二页时带上这个 IANA、当地时间和坐标。
+
 ### 天气
 
 ```env
 OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
 ```
 
-- `GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,weather_code`。坐标为 WGS-84。用已经得到的坐标，不要为了天气再定位一次。
+- `GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,weather_code&timezone={IANA}`。坐标为 WGS-84。`timezone` 用上一节得到的同一个 IANA。用已经得到的坐标，不要为了天气再定位一次。
 - `weather_code` 按下表译成中文后再显示。表里没有的显示「未知」。不要为了翻译再请求别的接口。
 
 | 代码 | 中文 |
@@ -93,6 +109,13 @@ OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
 | 95 | 雷暴 |
 | 96 | 雷暴伴小冰雹 |
 | 99 | 雷暴伴大冰雹 |
+
+### 星座
+
+不调用星座服务，不安装星座包。只看公历月日，不考虑出生时刻和年份。界日与 `specs/req-spec.md` 一致：摩羯 12/22–1/19，水瓶 1/20–2/18，双鱼 2/19–3/20，白羊 3/21–4/19，金牛 4/20–5/20，双子 5/21–6/21，巨蟹 6/22–7/22，狮子 7/23–8/22，处女 8/23–9/22，天秤 9/23–10/23，天蝎 10/24–11/22，射手 11/23–12/21。
+
+- 在 `web/` 里写本地函数。12/21、12/22、1/19、1/20 以及其余每个界日的前后一天都要有单元测试。
+- 界面显示中文星座名。
 
 ## 4.安装
 

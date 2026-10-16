@@ -52,13 +52,36 @@ GOOGLE_MAPS_PLACES_SEARCH_TEXT_URL=https://places.googleapis.com/v1/places:searc
 - Compute distance from returned coordinates. No per-row detail calls.
 - Browser link: `https://www.google.com/maps/dir/?api=1&destination=lat,lng`. No JS API. Keep the key server-side only. No `NEXT_PUBLIC_*`.
 
+### Time zone
+
+After geocoding succeeds, map the `country` `short_name` from `address_components` to an IANA time zone id. Do not call a time zone API. Do not install `geo-tz`, `tz-lookup`, or similar packages.
+
+| Country code | IANA |
+| --- | --- |
+| TW | `Asia/Taipei` |
+| HK | `Asia/Hong_Kong` |
+| MO | `Asia/Macau` |
+| SG | `Asia/Singapore` |
+| JP | `Asia/Tokyo` |
+| KR | `Asia/Seoul` |
+| AU | `Australia/Sydney` |
+| GB | `Europe/London` |
+| FR | `Europe/Paris` |
+| DE | `Europe/Berlin` |
+| US | `America/Los_Angeles` |
+| Any other successful result | `Asia/Taipei` |
+
+- Use `Intl.DateTimeFormat` with `timeZone` set to that IANA id for local date and time at the place. Do not use the browser system time zone instead. Do not estimate from longitude divided by 15.
+- For age, "today" uses the local calendar date in that IANA id. Subtract one year if this year's birthday has not occurred yet.
+- Pass this IANA id, local time, and coordinates when entering page 2.
+
 ### Weather
 
 ```env
 OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
 ```
 
-- `GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,weather_code`. WGS-84. Reuse coordinates; do not geocode again for weather.
+- `GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,weather_code&timezone={IANA}`. WGS-84. Use the same IANA id from the time zone section. Reuse coordinates; do not geocode again for weather.
 - Map `weather_code` with the table below before display. Unknown codes show "Unknown".
 
 | Code | Label |
@@ -91,6 +114,13 @@ OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
 | 95 | Thunderstorm |
 | 96 | Thunderstorm with slight hail |
 | 99 | Thunderstorm with heavy hail |
+
+### Zodiac
+
+Do not call a horoscope service and do not install a zodiac package. Use Gregorian month and day only, not birth time or birth year. Boundaries match `specs/req-spec.md` and this list: Capricorn 12/22–1/19, Aquarius 1/20–2/18, Pisces 2/19–3/20, Aries 3/21–4/19, Taurus 4/20–5/20, Gemini 5/21–6/21, Cancer 6/22–7/22, Leo 7/23–8/22, Virgo 8/23–9/22, Libra 9/23–10/23, Scorpio 10/24–11/22, Sagittarius 11/23–12/21.
+
+- Implement a local function in `web/`. Unit-test 12/21, 12/22, 1/19, 1/20, and the day before and after every other boundary.
+- Show English zodiac names in the UI.
 
 ## 4. Install
 
