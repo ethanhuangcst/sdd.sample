@@ -29,6 +29,8 @@ QUANZIL_CHAT_MODEL=gpt-6-astra
 
 Use the `openai` SDK with the key and base URL above. Do not set `OPENAI_API_KEY` or `OPENAI_BASE_URL`. Use `max_completion_tokens`, not `max_tokens`. An empty `choices[0].message.content` counts as failure.
 
+`gpt-6-astra` counts reasoning tokens inside `max_completion_tokens` before it writes `choices[0].message.content`. The word and character limits in the requirement prompts do not set this cap. Set `max_completion_tokens` to 1200 for the status summary, the itinerary, and the outfit text. An empty `choices[0].message.content` is failure, including when `finish_reason` is `length` because reasoning used the whole cap.
+
 ### Image
 
 ```env

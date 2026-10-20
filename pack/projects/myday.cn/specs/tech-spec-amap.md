@@ -29,6 +29,8 @@ QUANZIL_CHAT_MODEL=gpt-6-astra
 
 用 `openai` SDK，创建时传入上面的 Key 和 base URL。不要再设置 `OPENAI_API_KEY` 或 `OPENAI_BASE_URL`。用 `max_completion_tokens`，不用 `max_tokens`。`choices[0].message.content` 为空即失败。
 
+`gpt-6-astra` 会先把推理 token 计入 `max_completion_tokens`，再写 `choices[0].message.content`。需求提示词里的字数和字符数不设置这个上限。状态总结、行程、穿搭这三次对话都把 `max_completion_tokens` 设为 1200。`choices[0].message.content` 为空即失败，包括 `finish_reason` 为 `length`、推理用完上限、正文为空的情况。
+
 ### 图像
 
 ```env
