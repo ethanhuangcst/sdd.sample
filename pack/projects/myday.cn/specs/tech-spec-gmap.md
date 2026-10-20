@@ -38,7 +38,7 @@ QUANZIL_IMAGE_MODEL=gemini-3.1-flash-lite-image
 QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent
 ```
 
-`POST` 该 URL。请求头 `Authorization: Bearer <QUANZIL_API_KEY>`。正文带 `generationConfig.responseModalities: ["IMAGE"]`。有照片时 `parts` 含文本和 `inlineData`。`mimeType` 用照片本身的类型：`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`。先把长边缩到约 1024px。1×1 图片会 400。不要设置 `imageConfig.imageSize`。结果在 `candidates[0].content.parts[].inlineData`。没有 `inlineData` 即失败。读不到照片就报错，禁止改成不带照片的请求。
+`POST` 该 URL。请求头 `Authorization: Bearer <QUANZIL_API_KEY>`。正文带 `generationConfig.responseModalities: ["IMAGE"]`。有照片时 `parts` 含文本和 `inlineData`。`mimeType` 用照片本身的类型：`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`。照片是小图：上传由用户控制，长边约 2048px 以内、文件 2MB 以内，应用不做缩图。生图请求加 75 秒超时，超时按该区域失败处理，不重试。1×1 图片会 400。不要设置 `imageConfig.imageSize`。结果在 `candidates[0].content.parts[].inlineData`。没有 `inlineData` 即失败。读不到照片就报错，禁止改成不带照片的请求。
 
 ### Google Maps
 

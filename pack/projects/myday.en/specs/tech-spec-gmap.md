@@ -38,7 +38,7 @@ QUANZIL_IMAGE_MODEL=gemini-3.1-flash-lite-image
 QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent
 ```
 
-`POST` that URL. Header `Authorization: Bearer <QUANZIL_API_KEY>`. Body includes `generationConfig.responseModalities: ["IMAGE"]`. With a photo, `parts` include text and `inlineData`. Use the photo MIME type. Scale the long edge to about 1024px. A 1×1 image returns 400. Do not set `imageConfig.imageSize`. The result is in `candidates[0].content.parts[].inlineData`. Missing `inlineData` counts as failure. Do not drop the photo from the request.
+`POST` that URL. Header `Authorization: Bearer <QUANZIL_API_KEY>`. Body includes `generationConfig.responseModalities: ["IMAGE"]`. With a photo, `parts` include text and `inlineData`. Use the photo MIME type. The page-1 photo is small: the user controls the upload, long edge within about 2048px and file within 2MB. The app does not scale images. Wrap the image POST in a 75-second timeout; a timeout fails that block, no retry. A 1×1 image returns 400. Do not set `imageConfig.imageSize`. The result is in `candidates[0].content.parts[].inlineData`. Missing `inlineData` counts as failure. Do not drop the photo from the request.
 
 ### Google Maps
 

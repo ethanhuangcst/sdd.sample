@@ -48,7 +48,7 @@ QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:
 
 - Share `QUANZIL_API_KEY` with chat. `POST` the URL above. Header `Authorization: Bearer <QUANZIL_API_KEY>`.
 - The body includes `generationConfig.responseModalities: ["IMAGE"]`. Do not use the `openai` images methods. Do not set `imageConfig.imageSize`.
-- With a photo, `parts` include text and `inlineData`. `mimeType` is the photo's own type: `image/png`, `image/jpeg`, `image/webp`, `image/heic`, or `image/heif`. Shrink the long edge to about 1024px first. A 1×1 image returns 400.
+- With a photo, `parts` include text and `inlineData`. `mimeType` is the photo's own type: `image/png`, `image/jpeg`, `image/webp`, `image/heic`, or `image/heif`. The page-1 photo is small: the user controls the upload, long edge within about 2048px and file within 2MB. The app does not scale images. Wrap the image POST in a 75-second timeout; a timeout fails that block, no retry. A 1×1 image returns 400.
 - The result is in `candidates[0].content.parts[].inlineData`. No `inlineData` is failure. A photo that cannot be read is an error. Do not send the request again without the photo.
 
 ### Google Maps
