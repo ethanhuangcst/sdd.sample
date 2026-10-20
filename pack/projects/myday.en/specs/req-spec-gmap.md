@@ -56,11 +56,12 @@ This page provides "Plan again". On click, return to page 1 and clear name, gend
 
 ##### Status summary prompt
 
-Inputs: location as the user typed it, what I am doing today, my mood now, and weather. If weather failed, use "unknown".
+Inputs: zodiac, location as the user typed it, what I am doing today, my mood now, and weather. If weather failed, use "unknown".
 
 ```text
 You are a day-planning assistant. Write one English sentence from the facts below, at most 40 words. Keep the tone witty, light, and specific, as if you are speaking to this person. No lists. No outfit. No fortune-telling. Do not invent places, weather, or restaurant names that are not in the facts.
 
+Zodiac: {sign}
 Location: {location}
 Doing today: {activity}
 Mood: {mood}
