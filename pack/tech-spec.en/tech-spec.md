@@ -5,7 +5,6 @@
 
 - This file is the shared tech spec for practice projects. Product behavior lives in that project's requirements.
 - Later projects may include a web app, MCP, RAG, and an agent. This file sets the stack, third-party capabilities, and install steps those parts use. Do not wire a capability the project requirements do not name.
-- Chinese version: [`../tech-spec.cn/tech-spec-gmap.md`](../tech-spec.cn/tech-spec-gmap.md).
 - A third-party failure must tell the UI why. No silent empty success, empty image, or empty list. When the requirements do not mention retry, the user may retry once by hand. Do not retry in a loop.
 - When the install list or the test section in the project requirements is shorter than this file, follow the requirements.
 - Whether user-facing copy uses i18n is decided by that project's requirements. When they do not require it, one language written in the UI is allowed.

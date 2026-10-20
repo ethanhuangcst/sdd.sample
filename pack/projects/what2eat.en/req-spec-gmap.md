@@ -1,12 +1,7 @@
 # What2Eat — Business requirements
 
-- What2Eat is a web app that helps someone who cannot decide what to eat.
-- It uses the person's location, party size, saved preferences, craving, constraints, weather, and time of day. AI and Google Maps pick one nearby place.
-- It does not place orders, take payment, or replace a restaurant menu, allergen label, or medical diet advice.
-
-## Who it is for
-
-People who want a quick or random meal pick: one person, a small group, an office lunch, a traveler in a new city, or a household with different diets.
+- What2Eat helps you pick somewhere to eat when you are stuck.
+- Based on your location, party size, saved preferences, craving, and constraints, it uses AI and Google Maps to suggest one nearby place.
 
 ## Features
 
