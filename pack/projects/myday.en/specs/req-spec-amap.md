@@ -1,6 +1,6 @@
 # MyDay Web App
 
-- A daily planning web app that uses AI with weather, location, zodiac sign, activity, and mood to personalize the day.
+A daily planning web app that uses AI with weather, location, zodiac sign, activity, and mood to personalize the day.
 
 ## 1. External capabilities
 
