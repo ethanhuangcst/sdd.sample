@@ -6,8 +6,8 @@ A daily planning web app that uses AI with weather, location, zodiac sign, activ
 
 See `specs/tech-spec.md` in the project for technical details.
 
-- Location: AMap only, including geocoding, restaurant search, and map links.
-- Weather: Open-Meteo API. Do not use AMap weather.
+- Location: Baidu Maps only, including geocoding, reverse geocoding, restaurant search, and map links.
+- Weather: Open-Meteo API. Do not use Baidu Maps weather.
 - Zodiac: derive the sign locally from the user's birth date. Do not call a horoscope service.
 
 ## 2. Requirements
@@ -35,8 +35,8 @@ The user must complete every field below before submitting. If location cannot b
 - If any field is missing, the button is gray and not clickable
 - When every field is filled, the button is clickable
 - Treat a field as missing if it is empty after trimming leading and trailing whitespace
-- On click, run geocoding once through AMap
-- No result: stay on page 1. Mark "My location now" in red and show text asking the user to enter again. Do not go to page 2
+- On click, run geocoding once through Baidu Maps, then one reverse-geocode call on the returned coordinates to get the city name and adcode
+- No result: stay on page 1. Mark "My location now" in red and show text asking the user to enter again. A failure in either call counts as no result. Do not go to page 2
 - A result: go to page 2. Pass coordinates, city name, and local time computed on the client for this location. Do not call an external time zone API
 - Pass name, gender, birth date, what you are doing, mood, location, and photo together
 
@@ -50,7 +50,7 @@ This page provides "Plan again". On click, return to page 1 and clear name, gend
 
 - "Hello, {name}"
 - Age and zodiac name from the birth date
-- City, current weather condition, temperature, and an icon that matches the condition. City name comes from this geocode. Weather follows the coordinate rules in the tech spec and calls Open-Meteo. Display weather labels in English
+- City, current weather condition, temperature, and an icon that matches the condition. City name comes from this geocode and the reverse geocode. Weather follows the coordinate rules in the tech spec and calls Open-Meteo. Display weather labels in English
 - If weather fails, show the error only in this section. Still start the status summary, itinerary, and outfit text. In those three texts, weather is "unknown". Do not offer a retry
 - One status summary line from the prompt below. No more than 40 words
 
@@ -120,8 +120,8 @@ From the outfit below, generate a highly realistic full-body photo of this perso
 #### Where to eat
 
 - The user enters a cuisine as text. Do not search when the trimmed text is empty
-- Use the page 1 location. Search with AMap only. Radius 5000 m, one search. Sort by distance, nearest first
-- Each row shows restaurant name, distance, address, type, and phone. When phone or type is missing, show "None" for that cell. Clicking a row opens AMap in a new tab
+- Use the page 1 location. Search with Baidu Maps only. Radius 5000 m, one search. Sort by distance, nearest first
+- Each row shows restaurant name, distance, address, type, and phone. When phone or type is missing, show "None" for that cell. Clicking a row opens Baidu Maps in a new tab
 - Do not show rating, review count, or review snippets. No overlay dialog, no per-row detail API
 - When there are no results, tell the user they can change cuisine or tap "Plan again". Never show a blank list
 
@@ -143,7 +143,7 @@ After both fixture tests pass, run `npm run dev` in `web/`. Follow the path belo
 - Open "Introduce yourself". With every field empty, "Submit" is gray and not clickable.
 - Fill name, gender, birth date, what you are doing today, mood, a photo, and "Shanghai Aegean". Use `specs/test-img.png` for the photo.
 - Click "Submit" once. Enter "Plan my day". You should see a hello with the name, plus age, zodiac, city, weather condition, temperature, weather icon, one status summary line, itinerary, outfit text, and outfit portrait.
-- No restaurant search before a cuisine is entered. After one cuisine, the restaurant list appears. Each row has name, distance, address, type, and phone. Clicking a row opens AMap in a new tab.
+- No restaurant search before a cuisine is entered. After one cuisine, the restaurant list appears. Each row has name, distance, address, type, and phone. Clicking a row opens Baidu Maps in a new tab.
 - Stop after this one pass. Do not change layout. Re-run the two fixture tests only if this pass changed code. "Plan again" is covered by fixtures; do not click it in this pass.
 
 ## 4. UI and UX

@@ -3,8 +3,8 @@
 
 ##  1.原则
 - 在工作区根目录工作。不要参考其他项目。不要把代码或文档写到本工作区以外。
-- 工作区根目录只放两样：`specs/`，以及工程目录 `web/`。Next.js 代码只放在 `web/`。
-- 不做数据存储，不写 `data/`。
+- 工作区根目录放 `specs/` 和工程目录 `web/`；本项目有档案保存需求，本地 JSON 只放工作区根目录的 `data/`，无数据库。Next.js 代码只放在 `web/`。
+- 本项目能力只有对话、图像、天气、星座、百度地图。不配置 Google Maps，不用宝可梦，不用路线查询。
 - 只安装必需依赖项，不安装 React Query、Zustand、RHF、Playwright。
 
 ## 2.技术栈
@@ -40,25 +40,28 @@ QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:
 
 `POST` 该 URL。请求头 `Authorization: Bearer <QUANZIL_API_KEY>`。正文带 `generationConfig.responseModalities: ["IMAGE"]`。有照片时 `parts` 含文本和 `inlineData`。`mimeType` 用照片本身的类型：`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`。照片是小图：上传由用户控制，长边约 2048px 以内、文件 2MB 以内，应用不做缩图。生图请求加 75 秒超时，超时按该区域失败处理，不重试。1×1 图片会 400。不要设置 `imageConfig.imageSize`。结果在 `candidates[0].content.parts[].inlineData`。没有 `inlineData` 即失败。读不到照片就报错，禁止改成不带照片的请求。
 
-### 高德
+### 百度地图
 
 ```env
-AMAP_API_KEY=
-AMAP_HOST=https://restapi.amap.com
+BAIDUMAP_API_KEY=
+BAIDUMAP_GEOCODING_URL=https://api.map.baidu.com/geocoding/v3/
+BAIDUMAP_REVERSE_GEOCODING_URL=https://api.map.baidu.com/reverse_geocoding/v3/
+BAIDUMAP_PLACE_SEARCH_URL=https://api.map.baidu.com/place/v2/search
+BAIDUMAP_RET_COORDTYPE=gcj02ll
 ```
 
-- 正向地理编码：`GET {AMAP_HOST}/v3/geocode/geo?address={地址}&key=`
-- 周边餐饮：`GET {AMAP_HOST}/v5/place/around?location={经度},{纬度}&keywords={菜系}&types=050000&radius=5000&key=`
-- HTTP 200 且 `status` 为 `1`、`infocode` 为 `10000` 才算成功
-- 坐标顺序是经度,纬度。高德结果是 GCJ-02
-- 餐厅检索用原来的 GCJ-02。发给 Open-Meteo 之前，用公开的 GCJ-02 转 WGS-84 迭代在本地换算，不安装坐标库。中国境外的坐标不必换算
-- 只发上面这一次周边检索。名称、距离、地址、类型、电话用这一次的返回。不按行再请求详情
-- 浏览器打开 `https://uri.amap.com/marker?position=经度,纬度`。不加载 JS API
+- 正向地理编码：`GET {BAIDUMAP_GEOCODING_URL}?address={地址}&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`。`status` 为 `0` 才算成功
+- 逆地理编码：`GET {BAIDUMAP_REVERSE_GEOCODING_URL}?location={纬度},{经度}&output=json&ak={KEY}&coordtype=gcj02ll&ret_coordtype={RET_COORDTYPE}`。城市名和 `adcode` 取自 `result.addressComponent`。省辖县或县级市的 `city` 可能为空，此时所在城市用 `district`
+- 周边餐饮：`GET {BAIDUMAP_PLACE_SEARCH_URL}?query={菜系}&tag=美食&location={纬度},{经度}&radius=5000&scope=2&page_size=20&filter=industry_type:cater|sort_name:distance|sort_rule:1&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`
+- 百度默认返回 BD-09 坐标；`ret_coordtype=gcj02ll` 返回国测局坐标。接口的 `location` 参数顺序是纬度,经度
+- 检索结果用 GCJ-02。发给 Open-Meteo 之前，用公开的 GCJ-02 转 WGS-84 迭代在本地换算，不安装坐标库。中国境外的坐标不必换算。百度不提供 WGS-84 输出
+- 只发上面这一次周边检索。名称、距离、地址、类型、电话用这一次的返回。距离取 `detail_info.distance`。不按行再请求详情
+- 浏览器打开 `https://api.map.baidu.com/marker?location={纬度},{经度}&title={店名}&content={地址}&output=html&coord_type=gcj02&src=webapp.myday.myday`。`coord_type=gcj02` 必传，否则位置偏移。不加载 JS API
 - Key 只放查询参数，只在服务端使用
 
 ### 时区
 
-地理编码成功后，用返回的 `adcode` 映射 IANA 时区 id。不请求时区接口，不安装 `geo-tz`、`tz-lookup` 或同类包。
+正向地理编码和逆地理编码成功后，用逆地理编码返回的 `adcode` 映射 IANA 时区 id。`adcode` 是区县级码，前两位省份与下表的判断一致。不请求时区接口，不安装 `geo-tz`、`tz-lookup` 或同类包。
 
 | `adcode` 前缀 | IANA |
 | --- | --- |
@@ -146,3 +149,25 @@ OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
 ## 5.调用顺序
 
 彼此独立的调用同时发出。一块完成就显示这一块。穿搭图等待穿搭文字，这是需求里的依赖，不是把其他对话排在它前面。失败只说明这一块。不自动重试。
+
+## 6.测试
+
+### 组件测试
+
+- 每一页一条测试，用夹具，不出网
+- page 1：点击档案卡片进入 page 3
+- page 2：缺姓名不保存
+- page 3：两路都成功才进入 page 4
+- page 4：展示已取到的天气；未输入菜系不查找
+
+### 验收测试
+
+四条夹具测试通过后，执行 `npm run dev`。在浏览器里只走一遍下面的路径。走通后，在回复里给出本地地址，然后停止。
+
+- 打开档案列表。进入新建档案，不填任何项就点「保存」。页面留在新建档案，并标出姓名、出生城市、出生日期、照片未填。
+- 建一条档案。文件选择框无法上传时，用接口写入一张小 PNG 再建档，然后继续后面的步骤。不要为此改上传实现。
+- 打开该档案的「规划我的一天」。页面没有报错。没有地点时，「规划我的一天」不能点击。
+- 手输一个中国大陆城市。按钮可以点击后，点击一次「规划我的一天」。
+- 「我的今日计划」能看到天气、运势、穿搭文字和穿搭图。未输入菜系时不查找。输入一次菜系后出现餐厅列表。打开一行，按 Escape 关闭浮层。
+- 开发模式下穿搭文字和图各请求两次时，保持现状。不要为此改代码。
+- 这一遍走通后停止。不再改布局，不再为了再次输入城市而改页面。只有这一遍里改了代码时，才再跑那四条夹具测试。

@@ -12,4 +12,4 @@
 
 # 验收
 
-完成 `specs/req-spec.md` 里的「验收测试」。
+完成 `specs/tech-spec.md` 里的「验收测试」。

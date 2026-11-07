@@ -1,0 +1,170 @@
+# MyDay 技术规格
+
+
+##  1.原则
+- 在工作区根目录工作。不要参考其他项目。不要把代码或文档写到本工作区以外。
+- 工作区根目录放 `specs/` 和工程目录 `web/`；需要数据存储时，本地 JSON 只放工作区根目录的 `data/`，无数据库。Next.js 代码只放在 `web/`。
+- 本项目能力只有对话、图像、天气、星座、百度地图。不配置 Google Maps，不用宝可梦，不用路线查询。
+- 只安装必需依赖项，不安装 React Query、Zustand、RHF、Playwright。
+
+## 2.技术栈
+
+| 用途 | 技术 |
+| --- | --- |
+| 应用 | Next.js 16、React 19、TypeScript、Tailwind CSS 4 |
+| 对话 | `openai` SDK，Quanzil chat completions |
+| 图像 | Gemini `generateContent`，不用 `openai` 的 images 方法 |
+| 测试 | Vitest |
+
+
+## 3.能力
+
+### 对话
+
+```env
+QUANZIL_API_KEY=
+QUANZIL_BASE_URL=https://quanzil.com/v1
+QUANZIL_CHAT_MODEL=gpt-6-astra
+```
+
+用 `openai` SDK，创建时传入上面的 Key 和 base URL。不要再设置 `OPENAI_API_KEY` 或 `OPENAI_BASE_URL`。用 `max_completion_tokens`，不用 `max_tokens`。`choices[0].message.content` 为空即失败。
+
+### 图像
+
+```env
+QUANZIL_IMAGE_MODEL=gemini-3.1-flash-lite-image
+QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent
+```
+
+`POST` 该 URL。请求头 `Authorization: Bearer <QUANZIL_API_KEY>`。正文带 `generationConfig.responseModalities: ["IMAGE"]`。有照片时 `parts` 含文本和 `inlineData`。`mimeType` 用照片本身的类型：`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`。先把长边缩到约 1024px。1×1 图片会 400。不要设置 `imageConfig.imageSize`。结果在 `candidates[0].content.parts[].inlineData`。没有 `inlineData` 即失败。读不到照片就报错，禁止改成不带照片的请求。
+
+### 百度地图
+
+```env
+BAIDUMAP_API_KEY=
+BAIDUMAP_GEOCODING_URL=https://api.map.baidu.com/geocoding/v3/
+BAIDUMAP_REVERSE_GEOCODING_URL=https://api.map.baidu.com/reverse_geocoding/v3/
+BAIDUMAP_PLACE_SEARCH_URL=https://api.map.baidu.com/place/v2/search
+BAIDUMAP_RET_COORDTYPE=gcj02ll
+```
+
+- 正向地理编码：`GET {BAIDUMAP_GEOCODING_URL}?address={地址}&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`。`status` 为 `0` 才算成功
+- 逆地理编码：`GET {BAIDUMAP_REVERSE_GEOCODING_URL}?location={纬度},{经度}&output=json&ak={KEY}&coordtype=gcj02ll&ret_coordtype={RET_COORDTYPE}`。城市名和 `adcode` 取自 `result.addressComponent`。省辖县或县级市的 `city` 可能为空，此时所在城市用 `district`
+- 周边餐饮：`GET {BAIDUMAP_PLACE_SEARCH_URL}?query={菜系}&tag=美食&location={纬度},{经度}&radius=5000&scope=2&page_size=20&filter=industry_type:cater|sort_name:distance|sort_rule:1&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`
+- 百度默认返回 BD-09 坐标；`ret_coordtype=gcj02ll` 返回国测局坐标。接口的 `location` 参数顺序是纬度,经度
+- 检索结果用 GCJ-02。发给 Open-Meteo 之前，用公开的 GCJ-02 转 WGS-84 迭代在本地换算，不安装坐标库。中国境外的坐标不必换算。百度不提供 WGS-84 输出
+- 只发上面这一次周边检索。名称、距离、地址、类型、电话用这一次的返回。距离取 `detail_info.distance`。不按行再请求详情
+- 浏览器打开 `https://api.map.baidu.com/marker?location={纬度},{经度}&title={店名}&content={地址}&output=html&coord_type=gcj02&src=webapp.myday.myday`。`coord_type=gcj02` 必传，否则位置偏移。不加载 JS API
+- Key 只放查询参数，只在服务端使用
+
+### 时区
+
+正向地理编码和逆地理编码成功后，用逆地理编码返回的 `adcode` 映射 IANA 时区 id。`adcode` 是区县级码，前两位省份与下表的判断一致。不请求时区接口，不安装 `geo-tz`、`tz-lookup` 或同类包。
+
+| `adcode` 前缀 | IANA |
+| --- | --- |
+| 65 | `Asia/Urumqi` |
+| 81 | `Asia/Hong_Kong` |
+| 82 | `Asia/Macau` |
+| 71 | `Asia/Taipei` |
+| 其他已成功的结果 | `Asia/Shanghai` |
+
+- 用 `Intl.DateTimeFormat`，`timeZone` 设为上表的 IANA，算出该地点的当地日期和时间。不要用浏览器系统时区代替。不要用经度除以 15 估算。
+- 周岁里的「今天」用这个 IANA 的当地日历日期。未到今年生日则减一岁。
+- 进入第二页时带上这个 IANA、当地时间和坐标。
+
+### 天气
+
+```env
+OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
+```
+
+- `GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,weather_code&timezone={IANA}`。坐标为 WGS-84。`timezone` 用上一节得到的同一个 IANA。用已经得到的坐标，不要为了天气再定位一次。
+- `weather_code` 按下表译成中文后再显示。表里没有的显示「未知」。不要为了翻译再请求别的接口。
+
+| 代码 | 中文 |
+| --- | --- |
+| 0 | 晴 |
+| 1 | 大部晴朗 |
+| 2 | 局部多云 |
+| 3 | 阴 |
+| 45 | 雾 |
+| 48 | 雾凇 |
+| 51 | 小毛毛雨 |
+| 53 | 毛毛雨 |
+| 55 | 大毛毛雨 |
+| 56 | 冻毛毛雨 |
+| 57 | 强冻毛毛雨 |
+| 61 | 小雨 |
+| 63 | 中雨 |
+| 65 | 大雨 |
+| 66 | 冻雨 |
+| 67 | 强冻雨 |
+| 71 | 小雪 |
+| 73 | 中雪 |
+| 75 | 大雪 |
+| 77 | 雪粒 |
+| 80 | 小阵雨 |
+| 81 | 阵雨 |
+| 82 | 强阵雨 |
+| 85 | 小阵雪 |
+| 86 | 阵雪 |
+| 95 | 雷暴 |
+| 96 | 雷暴伴小冰雹 |
+| 99 | 雷暴伴大冰雹 |
+
+### 星座
+
+不调用星座服务，不安装星座包。只看公历月日，不考虑出生时刻和年份。界日与 `specs/req-spec.md` 一致：摩羯 12/22–1/19，水瓶 1/20–2/18，双鱼 2/19–3/20，白羊 3/21–4/19，金牛 4/20–5/20，双子 5/21–6/21，巨蟹 6/22–7/22，狮子 7/23–8/22，处女 8/23–9/22，天秤 9/23–10/23，天蝎 10/24–11/22，射手 11/23–12/21。
+
+- 在 `web/` 里写本地函数。12/21、12/22、1/19、1/20 以及其余每个界日的前后一天都要有单元测试。
+- 界面显示中文星座名。
+
+## 4.安装
+
+### 第一步：安装依赖项
+
+- 尚无 `web/package.json` 时，在工作区根目录执行下面这一条。`web/` 不存在或是空目录都可以。不要停在创建工具的提问上。中国大陆、香港、澳门：
+  ```
+  npm_config_registry=https://registry.npmmirror.com npx create-next-app@16 web --yes --ts --tailwind --eslint --app --no-src-dir --use-npm
+  ```
+  其他地区：同一条命令，不设置 `npm_config_registry`。
+  这条命令会自己安装 Next.js 依赖。不要在它之后再无目的地执行 `npm install`。
+- 然后在 `web/` 安装本项目额外的包。中国大陆、香港、澳门加上 `--registry=https://registry.npmmirror.com`：
+  ```
+  npm install openai
+  npm install -D vitest jsdom @testing-library/react @testing-library/jest-dom
+  ```
+
+- 已有 `web/package.json` 和 `web/package-lock.json` 时，不要再跑 `create-next-app`。在 `web/` 执行 `npm ci`。不要用 `npm install` 改写已有 lockfile。lockfile 里还没有上面这些包时，再按那两条安装命令补上。
+- peer 依赖失败时，给失败的那条 `npm install` 加上 `--legacy-peer-deps` 再装一次。不要改 `@types/node` 的版本。
+
+### 第二步：生成密钥
+
+- 密钥在 `specs/.secrets`。这个文件由人事先放好。
+- 只复制「3.能力」代码块里的变量名，从 `specs/.secrets` 写入 `web/.env.local`。`.secrets` 里多出来的变量不写。需要的变量不存在或为空则停止。禁止 `NEXT_PUBLIC_*`。回复、日志和浏览器响应里不出现密钥。
+
+## 5.调用顺序
+
+彼此独立的调用同时发出。一块完成就显示这一块。穿搭图等待穿搭文字，这是需求里的依赖，不是把其他对话排在它前面。失败只说明这一块。不自动重试。
+
+## 6.测试
+
+### 组件测试
+
+两条都用夹具，不出网。不选照片，不断言坐标。
+
+- 位置取不到时留在第一页，并用文字提示重新输入
+- 点击「重新规划」后回到第一页，字段为空
+
+### 验收测试
+
+测试照片是 `specs/test-img.png`。它是一张 200×200 的真人 PNG，不是 1×1。组件测试不使用它。文件选择框无法操作时，用这张图作为这次请求的照片，然后继续。不要为此改上传实现，也不要把照片写入磁盘。
+
+两条夹具测试通过后，在 `web/` 执行 `npm run dev`。在浏览器里只走一遍下面的路径。走通后，在回复里给出本地地址，然后停止。
+
+- 打开「介绍你自己」。不填任何项时「提交」为灰色且不能点击。
+- 填入姓名、性别、出生日期、今天在做什么、现在的心情、一张照片，以及「上海 爱琴海」。照片用上面的 `specs/test-img.png`。
+- 点击一次「提交」。进入「规划我的一天」。能看到你好和姓名、年龄、星座、所在城市、天气现象、温度、天气图标、一句状态总结、今日行程、穿搭文字和穿搭图。
+- 未输入菜系时不查找。输入一次菜系后出现餐厅列表，每行有名称、距离、地址、类型、电话。点击一行，新标签打开百度地图。
+- 这一遍走通后停止。不再改布局。只有这一遍里改了代码时，才再跑那两条夹具测试。「重新规划」由夹具覆盖，这一遍不再点它。

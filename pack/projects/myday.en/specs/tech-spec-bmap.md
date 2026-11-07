@@ -40,23 +40,27 @@ QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:
 
 `POST` that URL. Header `Authorization: Bearer <QUANZIL_API_KEY>`. Body includes `generationConfig.responseModalities: ["IMAGE"]`. With a photo, `parts` include text and `inlineData`. Use the photo MIME type. The page-1 photo is small: the user controls the upload, long edge within about 2048px and file within 2MB. The app does not scale images. Wrap the image POST in a 75-second timeout; a timeout fails that block, no retry. A 1×1 image returns 400. Do not set `imageConfig.imageSize`. The result is in `candidates[0].content.parts[].inlineData`. Missing `inlineData` counts as failure. Do not drop the photo from the request.
 
-### AMap
+### Baidu Maps
 
 ```env
-AMAP_API_KEY=
-AMAP_HOST=https://restapi.amap.com
+BAIDUMAP_API_KEY=
+BAIDUMAP_GEOCODING_URL=https://api.map.baidu.com/geocoding/v3/
+BAIDUMAP_REVERSE_GEOCODING_URL=https://api.map.baidu.com/reverse_geocoding/v3/
+BAIDUMAP_PLACE_SEARCH_URL=https://api.map.baidu.com/place/v2/search
+BAIDUMAP_RET_COORDTYPE=gcj02ll
 ```
 
-- Geocode: `GET {AMAP_HOST}/v3/geocode/geo?address={address}&key=`
-- Restaurants: `GET {AMAP_HOST}/v5/place/around?location={lng},{lat}&keywords={cuisine}&types=050000&radius=5000&key=`
-- Success: HTTP 200, `status` `1`, `infocode` `10000`. Coordinates are GCJ-02, order lng,lat.
-- Restaurant search uses GCJ-02. Convert to WGS-84 before Open-Meteo, using local iteration; do not add a coordinate library.
-- One around search only. Use name, distance, address, type, and phone from that response. No per-row detail calls.
-- Browser link: `https://uri.amap.com/marker?position=lng,lat`. No JS API. Keep the key server-side only.
+- Geocode: `GET {BAIDUMAP_GEOCODING_URL}?address={address}&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`. Success is `status` `0`.
+- Reverse geocode: `GET {BAIDUMAP_REVERSE_GEOCODING_URL}?location={lat},{lng}&output=json&ak={KEY}&coordtype=gcj02ll&ret_coordtype={RET_COORDTYPE}`. City name and `adcode` come from `result.addressComponent`. `city` may be empty for a county-level city; use `district` then.
+- Restaurants: `GET {BAIDUMAP_PLACE_SEARCH_URL}?query={cuisine}&tag=美食&location={lat},{lng}&radius=5000&scope=2&page_size=20&filter=industry_type:cater|sort_name:distance|sort_rule:1&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`
+- Baidu returns BD-09 by default; `ret_coordtype=gcj02ll` gives GCJ-02. The `location` parameter order is lat,lng.
+- Search results use GCJ-02. Convert to WGS-84 before Open-Meteo, using local iteration; do not add a coordinate library. Baidu cannot output WGS-84.
+- One around search only. Use name, distance (`detail_info.distance`), address, type, and phone from that response. No per-row detail calls.
+- Browser link: `https://api.map.baidu.com/marker?location={lat},{lng}&title={name}&content={address}&output=html&coord_type=gcj02&src=webapp.myday.myday`. Send `coord_type=gcj02`, otherwise the pin is offset. No JS API. Keep the key server-side only.
 
 ### Time zone
 
-After geocoding succeeds, map the returned `adcode` prefix to an IANA time zone id. Do not call a time zone API. Do not install `geo-tz`, `tz-lookup`, or similar packages.
+After the geocode and reverse geocode succeed, map the `adcode` returned by the reverse geocode to an IANA time zone id. The `adcode` is county-level; the province part (first two digits) drives the table below. Do not call a time zone API. Do not install `geo-tz`, `tz-lookup`, or similar packages.
 
 | `adcode` prefix | IANA |
 | --- | --- |
