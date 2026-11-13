@@ -127,7 +127,12 @@ Shares `QUANZIL_API_KEY` with chat. The request is native Gemini `generateConten
 
 ### Maps
 
-One region may have several providers (mainland China has AMap and Baidu); use the one the project requirements name. Rules shared by all three: the key stays on the server, no `NEXT_PUBLIC_*`; the browser opens each provider's own link, no JS API; geocode the same place once; radius and search count come from that project's requirements — when the requirements do not say the range may grow, do not increase the radius and search again.
+- One region may have several providers (mainland China has AMap and Baidu); use the one the project requirements name.
+- Rules shared by all three:
+1. The key stays on the server, no `NEXT_PUBLIC_*`;
+2. The browser opens each provider's own link, no JS API;
+3. Geocode the same place once;
+4. Radius and search count come from that project's requirements — when the requirements do not say the range may grow, do not increase the radius and search again.
 
 #### AMap — mainland China
 
@@ -317,6 +322,73 @@ Wire this only when the project requirements name a zodiac service. `POST $PANDO
 - A 429 body is `{"success":false,"error":"Too many requests","retryAfter":…}`, not JSON-RPC; show `retryAfter` and never retry a 429 automatically.
 - Tests use fixtures and never hit the live MCP; leave at least 30 seconds between smoke calls.
 
+### Tarot MCP
+
+A local stdio MCP with no key and no network dependency. Two candidates were tested; the recommendation is `tarotoo-mcp-server` (the other is unusable — see pitfalls).
+
+#### Environment
+
+```bash
+npx -y tarotoo-mcp-server
+```
+
+Install through the npmmirror registry: the default npmjs registry is unreachable from mainland networks, and `npx` hangs for minutes at the download stage with no output at all.
+
+#### Request
+
+Tested 2026-11-13 (tarotoo-tarot 2.0.1, protocol 2024-11-05; the 78-card Rider–Waite–Smith meanings dataset is bundled with the package, MIT). Returns live in `result.content[0].text` as JSON:
+
+- `get_card_meaning`: `name` required (e.g. `"fool"`; matching is forgiving). Full record for one card: upright and reversed meanings and keywords, love/career/mood/spiritual contexts, element, astrology, upright and reversed yes/no. Measured `fool` at about 1.4KB.
+- `draw_cards`: `count` (1–10, default 1), `allow_reversed`. Draws distinct random cards with orientations. Measured 3 cards at about 1.9KB.
+- `list_cards`: `arcana?` (major/minor), `suit?` (wands/cups/swords/pentacles).
+- `search_cards`: `query` required, `limit?` (1–78, default 10); finds cards by theme (e.g. `"heartbreak"` → Three of Swords).
+- `yes_no_answer`: `name` required; returns the yes/no verdict with justification.
+
+#### Performance
+
+- The dataset is bundled with no network calls; a single call takes milliseconds.
+- The `tools/list` cold start can take 16–90 seconds to respond — see the handshake note in pitfalls; keep the child process resident and reuse it.
+
+#### Pitfalls
+
+- **The handshake is sensitive**: `initialize`, `notifications/initialized`, and `tools/list` must be written back to back (what official MCP client SDKs do). A paced handshake — waiting for the `initialize` response before sending the next message — made `tools/list` unresponsive for a long time in testing. Hand-written clients should use the official SDK or pipeline the messages.
+- The dataset covers only the Rider–Waite–Smith tradition; meanings are for entertainment and self-reflection per the dataset's own statement, not medical, legal, or financial advice.
+- The alternative `tarot-mcp` (v0.1.0) did not answer `tools/list` even with pipelined messages; judged unusable.
+
+### Bazi MCP
+
+Deterministic local calculation, no key, no network. The recommendation is `@openfate/bazi-mcp`; the alternative `shunshi-bazi-mcp` works but its cold start takes about 48 seconds.
+
+#### Environment
+
+```bash
+npx -y @openfate/bazi-mcp
+```
+
+Install through npmmirror as well.
+
+#### Request
+
+Tested 2026-11-13 (openfate-bazi-mcp 0.3.1, protocol 2024-11-05, local calculation with no outbound traffic, MIT):
+
+- `calculate_bazi_chart`: deterministic Four Pillars chart. Args: `year`, `month`, `day`, `hour`, `minute`, `second`, `gender`, `calendarType`, `isLeapMonth`, `longitude`, `timezone`, `timezoneId`, `dstOffset`, `enableTrueSolarTime`, `dayBoundaryMode`. Measured 1990-03-15 12:00, Shanghai, male, `dayBoundaryMode:"ZI_HOUR_23"` — about 10.3KB of structured chart (`data` + `attribution`).
+- `detect_bazi_interactions`: branch interactions (clash, combine, punishment, harm) for the natal chart, annual triggers, and comparisons.
+- `calculate_true_solar_time`: true solar time calculation and explanation.
+- `reverse_bazi_to_solar_times`: reverse lookup of possible solar dates from four pillars.
+- `get_openfate_bazi_policy`: the calculation policy for day boundaries, DST, and true solar time.
+
+#### Performance
+
+- Deterministic local calculation, millisecond responses; chart requests never leave the machine.
+- The `tools/list` cold start can likewise sit unresponsive for tens of seconds — same handshake rule as tarot; keep the child process resident and reuse it.
+
+#### Pitfalls
+
+- `dayBoundaryMode` must be the enum `'MIDNIGHT_00'` or `'ZI_HOUR_23'`; a plain string is rejected by the schema (`-32602`, measured).
+- The Zi-hour day-boundary policy (`dayBoundaryMode`) and the true-solar-time switch (`enableTrueSolarTime`) both change the hour pillar; the project requirements must state which policy to use.
+- LLMs must not derive calendar math themselves (solar-term boundaries, true solar time, lunar conversion, branch interactions); always call the engine — the package's own stance.
+- The alternative `shunshi-bazi-mcp` (v0.1.0): tools `getBaziChart` and `getHuangli` (almanac do/don't); numeric args; true solar time on by default; measured cold start about 48 seconds before `tools/list` answered.
+
 ### Pokémon TCG catalog
 
 #### Environment
@@ -443,9 +515,15 @@ The response is `{"meals":[…]}` with `idMeal`, `strMeal`, `strCategory`, `strA
 
 ### npm mirror
 
-Install dependencies by current location. When `package.json` is missing, create the app from the project requirements first, then install; when a lockfile exists, use `npm ci` and never rewrite it with `npm install`.
+#### Principles
 
-Mainland China, Hong Kong, and Macau:
+- When `package.json` is missing, create the app from the project requirements first, then install.
+- With a lockfile present, use only `npm ci`; rewriting it with `npm install` turns `resolved` entries into mirror URLs. `registry.npmjs.org` inside a lockfile means "the currently configured registry"; `npm ci --registry=...` downloads from the mirror without touching the lockfile.
+- Never run `npm config set registry`; never commit a project `.npmrc`.
+- On an `edgesOut` null pointer, rerun `npm ci` with `--legacy-peer-deps`; the same applies to other peer-dependency failures. Do not change versions in the lockfile and do not change `@types/node` to make an install pass.
+- If `npm config get registry` is not `https://registry.npmjs.org/`, clear the user-level setting with `npm config delete registry` and run `npm ci` again.
+
+#### Mainland China, Hong Kong, and Macau
 
 ```bash
 # only to generate a lockfile when none exists
@@ -454,7 +532,7 @@ npm install --registry=https://registry.npmmirror.com
 npm ci --registry=https://registry.npmmirror.com
 ```
 
-Other regions:
+#### Other regions
 
 ```bash
 # only to generate a lockfile when none exists
@@ -462,11 +540,6 @@ npm install
 # when a lockfile exists
 npm ci
 ```
-
-- With a lockfile present, use only `npm ci`; rewriting it with `npm install` turns `resolved` entries into mirror URLs. `registry.npmjs.org` inside a lockfile means "the currently configured registry"; `npm ci --registry=...` downloads from the mirror without touching the lockfile.
-- Never run `npm config set registry`; never commit a project `.npmrc`.
-- On an `edgesOut` null pointer, rerun `npm ci` with `--legacy-peer-deps`; the same applies to other peer-dependency failures. Do not change versions in the lockfile and do not change `@types/node` to make an install pass.
-- If `npm config get registry` is not `https://registry.npmjs.org/`, clear the user-level setting with `npm config delete registry` and run `npm ci` again.
 
 ### Secrets
 

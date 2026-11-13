@@ -126,9 +126,18 @@ QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:
 - 文本已可用时，不要把文本 LLM 与图像串在同一关键路径上。
 
 
-### 高德（AMap）— 中国大陆
+### 地图
 
-#### 环境配置
+- 同一地区有多家供应商（中国大陆有高德与百度），用项目需求指定的那一家。
+- 三家共同的规则：
+1. Key 只在服务端使用，禁止 `NEXT_PUBLIC_*`；
+2. 浏览器打开各自的链接，不加载 JS API；
+3. 同一个地点只做一次地理编码；
+4. 半径与检索次数由该项目需求决定，需求没有写明可以扩大范围时，不要加大半径再查。
+
+#### 高德（AMap）— 中国大陆
+
+##### 环境配置
 
 ```env
 AMAP_API_KEY=
@@ -139,7 +148,7 @@ AMAP_HOST=https://restapi.amap.com
 # GET {AMAP_HOST}/v5/direction/walking?origin={经度},{纬度}&destination={经度},{纬度}&key=${AMAP_API_KEY}
 ```
 
-#### 请求
+##### 请求
 
 - `location`、`origin`、`destination` 都是经度,纬度。HTTP 200 且 `status` 为 `1`、`infocode` 为 `10000` 才算成功。2026-10-13 四条路径按上面的查询参数实测，`infocode` 均为 `10000`。
 - 地理编码在 `/v3`，关键字搜索、周边搜索、步行路线在 `/v5`；不要设一个 `/v3` 的 base 盖住全部接口。
@@ -147,19 +156,19 @@ AMAP_HOST=https://restapi.amap.com
   - 用 `GET /v5/place/around`，不用 `/v5/place/text`。`location` 为 GCJ-02 经度,纬度，`radius` 单位是米，餐饮类型 `types=050000`，检索词用用户输入的文字。
   - 有结果就停：先检索词加 `types=050000`，再只检索词，最后只 `types=050000`。
 
-#### 性能要求
+##### 性能要求
 
-- 同一个地点只做一次地理编码。天气和餐厅用当前地点的坐标；出生城市是另一地点时各编码一次。
+- 天气和餐厅用当前地点的坐标；出生城市是另一地点时各编码一次。
 
-#### 关键陷阱
+##### 关键陷阱
 
 - Key 放查询参数 `key`，不放请求头。浏览器打开 `https://uri.amap.com/marker?position=经度,纬度`。
 - 浏览器定位与 Open-Meteo 用 WGS-84；高德 REST 用 GCJ-02。发给 Open-Meteo 前用公开迭代在本地换算，不安装坐标库；中国境外的坐标不必换算；周边检索保持 GCJ-02。
 - 是否在中国大陆用返回的 `adcode` 判断：71、81、82 开头分别是台湾、香港、澳门，都不是中国大陆；正向地理编码没有结果按解析失败处理。浏览器定位坐标先走 `GET /v3/geocode/regeo?location={经度},{纬度}`，再用 `adcode` 判断；不写经纬度方框。
 
-### 百度（Baidu Maps）— 中国大陆
+#### 百度（Baidu Maps）— 中国大陆
 
-#### 环境配置
+##### 环境配置
 
 ```env
 BAIDUMAP_API_KEY=
@@ -169,27 +178,27 @@ BAIDUMAP_PLACE_SEARCH_URL=https://api.map.baidu.com/place/v2/search
 BAIDUMAP_RET_COORDTYPE=gcj02ll
 ```
 
-#### 请求
+##### 请求
 
 - 正向地理编码：`GET {BAIDUMAP_GEOCODING_URL}?address={地址}&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`。`status` 为 `0` 才算成功。
 - 逆地理编码：`GET {BAIDUMAP_REVERSE_GEOCODING_URL}?location={纬度},{经度}&output=json&ak={KEY}&coordtype=gcj02ll&ret_coordtype={RET_COORDTYPE}`。城市名和 `adcode` 取自 `result.addressComponent`；省辖县或县级市的 `city` 可能为空，此时用 `district`。
 - 周边检索：`GET {BAIDUMAP_PLACE_SEARCH_URL}?query={关键词}&tag={分类}&location={纬度},{经度}&radius={米}&scope=2&page_size=20&filter=industry_type:cater|sort_name:distance|sort_rule:1&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`。`page_size` 最大 20；餐饮用 `tag=美食`；半径、检索词与次数由项目需求决定。
 - 2026-11-08 实测：地理编码、周边检索、逆地理编码、轻量级步行路线四组接口均返回 `status=0`。
 
-#### 性能要求
+##### 性能要求
 
 - 同一个地点做一次正向加一次逆地理编码，两者串行（逆地理依赖正向的坐标）。
 
-#### 关键陷阱
+##### 关键陷阱
 
 - 百度默认返回 BD-09 坐标；`ret_coordtype=gcj02ll` 返回国测局坐标。接口的 `location` 参数顺序是纬度,经度，与高德相反。
 - 检索结果用 GCJ-02；发给 Open-Meteo 前本地换算 WGS-84。百度不提供 WGS-84 输出（坐标转换接口转 WGS-84 返回 `status=4`）。
-- Key 只放查询参数，只在服务端使用。浏览器打开 `https://api.map.baidu.com/marker?location={纬度},{经度}&title={名称}&content={内容}&output=html&coord_type=gcj02&src=webapp.{公司}.{应用}`；`coord_type=gcj02` 必传，否则位置偏移；`src` 必选。
+- Key 只放查询参数。浏览器打开 `https://api.map.baidu.com/marker?location={纬度},{经度}&title={名称}&content={内容}&output=html&coord_type=gcj02&src=webapp.{公司}.{应用}`；`coord_type=gcj02` 必传，否则位置偏移；`src` 必选。
 - 需要本地时间时，用逆地理编码的 `adcode` 映射 IANA 时区：`65`→`Asia/Urumqi`，`81`→`Asia/Hong_Kong`，`82`→`Asia/Macau`，`71`→`Asia/Taipei`，其他成功结果→`Asia/Shanghai`。`adcode` 是区县级码，前两位省份足够判断；覆盖港澳台需在控制台开通全球逆地理编码服务。
 
-### Google Maps — 中国大陆以外（含香港、澳门）
+#### Google Maps — 中国大陆以外（含香港、澳门）
 
-#### 环境配置
+##### 环境配置
 
 ```env
 GOOGLE_MAPS_API_KEY=
@@ -201,7 +210,7 @@ GOOGLE_MAPS_PLACES_PHOTO_PREFIX=https://places.googleapis.com/v1
 GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.location,places.photos
 ```
 
-#### 请求
+##### 请求
 
 - 地理编码：`GET ${GOOGLE_MAPS_GEOCODE_URL}?address={地址}&key=${GOOGLE_MAPS_API_KEY}`。`status` 为 `OK` 才算成功。坐标是 WGS-84，顺序纬度,经度（与高德相反）。2026-10-13 实测返回 `OK`。
 - 路线：`GET ${GOOGLE_MAPS_DIRECTIONS_URL}?origin={纬度},{经度}&destination={纬度},{经度}&mode=walking&key=${GOOGLE_MAPS_API_KEY}`。2026-10-13 实测返回 `OK`。
@@ -232,16 +241,16 @@ GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.locatio
 
 - 地点照片：`GET ${GOOGLE_MAPS_PLACES_PHOTO_PREFIX}/{photo.name}/media?maxHeightPx=800`，请求头 `X-Goog-Api-Key`。`photo.name` 的值是 `places/{placeId}/photos/{photoId}`；必须带 `maxHeightPx` 或 `maxWidthPx`（1–4800）。默认重定向到图片，服务端跟随重定向取回字节再交给浏览器；客户端 `img` 指向自己的路由，不带 Key。2026-10-13 实测跟随重定向后为 `image/jpeg`。
 
-#### 性能要求
+##### 性能要求
 
-- 同一地点只做一次地理编码，后面的地点检索复用这次坐标，不要再打一次。
+- 后面的地点检索复用这次坐标，不要再打一次。
 
-#### 关键陷阱
+##### 关键陷阱
 
 - Key 放置规则：Geocoding、Directions 把 Key 放查询参数 `key`；Places 与地点照片把 Key 放请求头 `X-Goog-Api-Key`。禁止用 HTTP 引用来源限制这把 Key（服务端请求没有 Referer，会返回 `REQUEST_DENIED`）；Key 的应用限制用 IP 地址，本机开发可暂不限制；在 Google Cloud 只启用实际调用的 API。
 - Geocoding、Directions 与 Places 的 host 不同，禁止把 `https://maps.googleapis.com` 当成统一 base。
 - 是否在中国大陆看地理编码结果里 `country` 的短码：`CN` 是中国大陆，`HK`、`MO`、`TW` 和其他国家不是；浏览器坐标先做一次逆地理编码，不写经纬度方框。
-- 浏览器打开 `https://www.google.com/maps/dir/?api=1&destination=纬度,经度`，不加载 JS API。
+- 浏览器打开 `https://www.google.com/maps/dir/?api=1&destination=纬度,经度`。
 
 ### 天气
 
@@ -314,6 +323,73 @@ PANDORIUM_MCP_URL=https://pandorium.app/mcp
 - 429 响应体为 `{"success":false,"error":"Too many requests","retryAfter":…}`，不是 JSON-RPC；须展示 `retryAfter`，禁止对 429 自动重试。
 - 测试用夹具，不出网打 live MCP；冒烟间隔至少 30 秒。
 
+### 塔罗 MCP
+
+本地 stdio MCP，无需 Key、无网络依赖。两个候选实测后推荐 `tarotoo-mcp-server`（另一个不可用，见关键陷阱）。
+
+#### 环境配置
+
+```bash
+npx -y tarotoo-mcp-server
+```
+
+安装走 npmmirror 镜像：默认 npmjs 源在大陆网络不可达，`npx` 会在下载阶段卡住数分钟且无任何输出。
+
+#### 请求
+
+2026-11-13 实测（tarotoo-tarot 2.0.1，协议 2024-11-05，78 张 Rider–Waite–Smith 牌义数据集随包内置，MIT）。返回都在 `result.content[0].text`，JSON 格式：
+
+- `get_card_meaning`：`name` 必填（如 `"fool"`，匹配宽容）。返回单张完整牌义：正逆位含义与关键词、爱情/事业/情绪/灵性语境、元素、星象、正逆位是否牌。实测 `fool` 约 1.4KB。
+- `draw_cards`：`count`（1–10，默认 1）、`allow_reversed`。随机抽不重复的牌并带正逆位。实测抽 3 张约 1.9KB。
+- `list_cards`：`arcana?`（major/minor）、`suit?`（wands/cups/swords/pentacles）。
+- `search_cards`：`query` 必填、`limit?`（1–78，默认 10），按主题找牌（如 `"heartbreak"` 命中宝剑三）。
+- `yes_no_answer`：`name` 必填，返回是否牌结论与依据。
+
+#### 性能要求
+
+- 数据集随包内置、无网络调用，单次调用毫秒级。
+- `tools/list` 冷启动可能 16–90 秒才响应，握手写法见关键陷阱；建议服务子进程常驻复用。
+
+#### 关键陷阱
+
+- **握手方式敏感**：`initialize`、`notifications/initialized`、`tools/list` 必须连续写入（官方 MCP 客户端 SDK 的行为）。逐条等待式握手（收到 `initialize` 响应后再发下一条）实测会让 `tools/list` 长时间无响应。自写客户端用官方 SDK 或连发模式。
+- 数据集只有 Rider–Waite–Smith 体系；牌义仅供娱乐与自省（数据集官方声明），不构成医疗、法律、财务建议。
+- 备选 `tarot-mcp`（v0.1.0）：连发模式下 `tools/list` 也无响应，判不可用。
+
+### 八字 MCP
+
+本地确定性计算，无需 Key、不出网。推荐 `@openfate/bazi-mcp`；备选 `shunshi-bazi-mcp`（可用但冷启动约 48 秒）。
+
+#### 环境配置
+
+```bash
+npx -y @openfate/bazi-mcp
+```
+
+安装同样走 npmmirror。
+
+#### 请求
+
+2026-11-13 实测（openfate-bazi-mcp 0.3.1，协议 2024-11-05，本地计算不出网，MIT）：
+
+- `calculate_bazi_chart`：确定性四柱排盘。参数：`year`、`month`、`day`、`hour`、`minute`、`second`、`gender`、`calendarType`、`isLeapMonth`、`longitude`、`timezone`、`timezoneId`、`dstOffset`、`enableTrueSolarTime`、`dayBoundaryMode`。实测 1990-03-15 12:00 上海男命、`dayBoundaryMode:"ZI_HOUR_23"` 返回约 10.3KB 结构化命盘（`data` + `attribution`）。
+- `detect_bazi_interactions`：地支冲合刑会破害（本命盘、流年、合盘）。
+- `calculate_true_solar_time`：真太阳时的计算与解释。
+- `reverse_bazi_to_solar_times`：由四柱反查公历候选时间。
+- `get_openfate_bazi_policy`：换日、夏令时、真太阳时的计算口径。
+
+#### 性能要求
+
+- 本地确定性计算，毫秒级返回；不把命盘请求发往任何远端。
+- `tools/list` 冷启动同样可能数十秒无响应，握手要求与塔罗相同；服务子进程常驻复用。
+
+#### 关键陷阱
+
+- `dayBoundaryMode` 必须用枚举值 `'MIDNIGHT_00'` 或 `'ZI_HOUR_23'`；传普通字符串会被 schema 拒绝（`-32602`，探针实测）。
+- 子时换日口径（`dayBoundaryMode`）与真太阳时开关（`enableTrueSolarTime`）直接影响时柱；项目需求必须写明采用哪种口径。
+- LLM 不得自行推算历法（节气边界、真太阳时、农历转换、地支互动）；一律调用引擎，这是该包的官方立场。
+- 备选 `shunshi-bazi-mcp`（v0.1.0）：工具 `getBaziChart`、`getHuangli`（黄历宜忌）；参数为数值字段；默认真太阳时开启；实测冷启动约 48 秒才响应 `tools/list`。
+
 ### 宝可梦 TCG 目录
 
 #### 环境配置
@@ -339,9 +415,13 @@ TCGDEX_BASE_URL=https://api.tcgdex.net/v2
 
 - `lang` 只用 `zh-cn`、`zh-tw` 或 `en`；只使用文档记载的路径与字段。
 
-### 中式菜谱 HowToCook — 本地 stdio MCP
+### 菜谱 MCP
 
-#### 环境配置
+三个来源按菜系取用：中式来自 HowToCook（本地 stdio MCP），西式与其他来自 RecipeWiki（远程 MCP）与 TheMealDB（REST，非 MCP）。三者都无需 Key。多来源合并展示时，每条标注来源。
+
+#### 中式菜谱 HowToCook — 本地 stdio MCP
+
+##### 环境配置
 
 无需密钥。服务端以本地子进程运行：
 
@@ -363,28 +443,28 @@ stdio 通信：先发 `initialize`，再发 `notifications/initialized`，然后
 
 返回在 `result.content[0].text`，是 JSON 数组，元素含 `id`（形如 `dishes-aquatic-咖喱炒蟹`）、`name`、`description`（Markdown 正文）等字段。
 
-#### 性能要求
+##### 性能要求
 
 - 服务子进程常驻复用，不要每次调用都重启。
 - 瓶颈不在响应耗时（数据在本地，2026-11-13 实测每次调用都在 0.01 秒内），在返回体积占用的上下文。实测各工具返回体积：`getRecipeById` 约 3.4KB（单道菜，最小）；`whatToEat` 约 6.5KB；`getAllRecipes` 约 43.5KB（322 个菜谱全量）；`getRecipesByCategory` 单个分类即可达约 40KB（水产）；`recommendMeals` 约 137KB（一周膳食计划加购物清单，体积最大）。
 - 优先 `getRecipeById`（支持按名称模糊匹配）与 `getRecipesByCategory`；确需列表时，先想清楚全量或整周计划是否真要进上下文；`getAllRecipes` 官方文档自注「慎用这个——上下文太大」。
 
-#### 关键陷阱
+##### 关键陷阱
 
 - `getRecipeById` 的参数名是 `query`（菜谱名称或 ID，支持模糊匹配）；传 `id`、`name` 等其他参数名会被 schema 拒绝（`-32602`）。
 - 版本差异：0.2.2 已把菜谱数据随包内置（启动即载入 322 个菜谱）；早期版本启动时从远程 `weilei.site` 拉取 `all_recipes.json`，偶发 10 秒连接超时导致服务退出（官方 issue #11）。生产环境固定版本，避免行为漂移。
 - 原文是中文。目标语言不是中文时先翻译再展示；翻译缓存与标注规则由该项目需求决定。
 
-### 西式菜谱 RecipeWiki — 远程 MCP
+#### 西式菜谱 RecipeWiki — 远程 MCP
 
-#### 环境配置
+##### 环境配置
 
 ```env
 # Streamable HTTP MCP，无需 Key、无需账号
 RECIPEWIKI_MCP_URL=https://www.recipewiki.com/api/mcp
 ```
 
-#### 请求
+##### 请求
 
 `POST $RECIPEWIKI_MCP_URL`，请求头 `Content-Type: application/json` 与 `Accept: application/json, text/event-stream`。2026-11-13 实测（协议 2025-03-26，服务端 recipewiki 1.0.0）：响应是普通 `application/json` 的 JSON-RPC，不是 SSE；无需会话头。工具：
 
@@ -393,25 +473,25 @@ RECIPEWIKI_MCP_URL=https://www.recipewiki.com/api/mcp
 - `list_tags`：可选 `group`。
 - `list_allergens`：无参数。
 
-#### 性能要求
+##### 性能要求
 
 - 列表与详情是两次调用：先 `search_recipes`，再对选中的 `slug` 调 `get_recipe`。
 
-#### 关键陷阱
+##### 关键陷阱
 
 - `query` 会忽略 `tags`、`cuisine`、`course`（服务端在工具说明里明确），不要组合使用还指望两者都生效。
 - 过敏原字段按子菜谱向上汇总；下「安全」结论前先看 `list_allergens` 的说明。
 
-### 西式菜谱 TheMealDB — REST API
+#### 西式菜谱 TheMealDB — REST API
 
-#### 环境配置
+##### 环境配置
 
 ```env
 # 路径中的 1 是官方公开测试 Key，无需申请
 THEMEALDB_BASE_URL=https://www.themealdb.com/api/json/v1/1
 ```
 
-#### 请求
+##### 请求
 
 2026-11-13 实测全部返回 HTTP 200：
 
@@ -423,11 +503,11 @@ THEMEALDB_BASE_URL=https://www.themealdb.com/api/json/v1/1
 
 响应是 `{"meals":[…]}`，字段含 `idMeal`、`strMeal`、`strCategory`、`strArea`、`strInstructions`、`strMealThumb`。
 
-#### 性能要求
+##### 性能要求
 
 - 每次请求取一次；同一菜谱不重复请求。
 
-#### 关键陷阱
+##### 关键陷阱
 
 - 原文是英文。目标语言不是英文时先翻译再展示；翻译缓存与标注规则由该项目需求决定。
 - `filter.php` 只返回缩略列表（无步骤与食材），详情用 `lookup.php`。
@@ -436,9 +516,15 @@ THEMEALDB_BASE_URL=https://www.themealdb.com/api/json/v1/1
 
 ### npm 镜像
 
-准备工程时按当前位置安装依赖。尚无 `package.json` 时，先按项目需求建工程再安装；已有 lockfile 时用 `npm ci`，不要用 `npm install` 改写 lockfile。
+#### 原则
 
-中国大陆、香港和澳门：
+- 尚无 `package.json` 时，先按项目需求建工程再安装。
+- 已有 lockfile 时只用 `npm ci`，不要用 `npm install` 改写它，否则 `resolved` 会变成镜像地址。lockfile 里的 `registry.npmjs.org` 表示「当前配置的 registry」，`npm ci --registry=...` 从镜像下载、不改 lockfile。
+- 禁止 `npm config set registry`，禁止提交项目 `.npmrc`。
+- `npm ci` 遇 `edgesOut` 空指针时，加 `--legacy-peer-deps` 再装一次；其他 peer 依赖失败同理。不要改 lockfile 里的版本，不要为此改 `@types/node`。
+- 若 `npm config get registry` 不是 `https://registry.npmjs.org/`，用 `npm config delete registry` 清掉用户级设置后再 `npm ci`。
+
+#### 中国大陆、香港和澳门
 
 ```bash
 # 还没有 lockfile 时，只用来生成它
@@ -447,7 +533,7 @@ npm install --registry=https://registry.npmmirror.com
 npm ci --registry=https://registry.npmmirror.com
 ```
 
-其他地区：
+#### 其他地区
 
 ```bash
 # 还没有 lockfile 时，只用来生成它
@@ -455,11 +541,6 @@ npm install
 # 已有 lockfile 时
 npm ci
 ```
-
-- 已有 lockfile 时只用 `npm ci`，不要用 `npm install` 改写它，否则 `resolved` 会变成镜像地址。lockfile 里的 `registry.npmjs.org` 表示「当前配置的 registry」，`npm ci --registry=...` 从镜像下载、不改 lockfile。
-- 禁止 `npm config set registry`，禁止提交项目 `.npmrc`。
-- `npm ci` 遇 `edgesOut` 空指针时，加 `--legacy-peer-deps` 再装一次；其他 peer 依赖失败同理。不要改 lockfile 里的版本，不要为此改 `@types/node`。
-- 若 `npm config get registry` 不是 `https://registry.npmjs.org/`，用 `npm config delete registry` 清掉用户级设置后再 `npm ci`。
 
 ### 密钥
 
