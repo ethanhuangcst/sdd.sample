@@ -10,7 +10,7 @@
 
 ## 1. Principles
 
-- Project documents live in `pack/projects/<project>/`. Code is organized by type: Next.js in `web/`, RAG in `rag/`, MCP in `mcp/`.
+- Project documents live in `<project>/` folders at the repository root. Code is organized by type: Next.js in `web/`, RAG in `rag/`, MCP in `mcp/`.
 - Minimal dependencies: section 2 lists the technologies you may use; not every project installs all of them. Install only the packages the project requirements name. `create-next-app` picks and installs TypeScript.
 - Local file storage: persistence uses local files in the project's `data/`. No database, no ORM.
 - When one region has several providers (AMap and Baidu for maps), use the one the project requirements name.

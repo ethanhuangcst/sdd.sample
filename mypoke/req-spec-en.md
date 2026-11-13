@@ -2,7 +2,7 @@
 
 - MyPoke is a Pokémon Trading Card Game (TCG) collection and card-lookup helper. It helps collectors look up cards, manage their collection, and browse official catalog sets and card details
 - It primarily serves Pokémon TCG collectors who want to organize their collection and look up cards quickly. Parents helping kids manage collections, and local card shop regulars, may also use it
-- Card data comes from the official catalog REST API (https://api.tcgdex.net): free, public, and keyless. Access details are in the shared tech spec, the "Pokémon TCG catalog" section: [`../../tech-spec-en.md`](../../tech-spec-en.md)
+- Card data comes from the official catalog REST API (https://api.tcgdex.net): free, public, and keyless. Access details are in the shared tech spec, the "Pokémon TCG catalog" section: [`../tech-spec-en.md`](../tech-spec-en.md)
 
 ## Features
 

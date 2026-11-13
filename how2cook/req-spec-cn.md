@@ -2,7 +2,7 @@
 
 - 依据本目录 `brd-cn.md`。业务范围以 BRD 为准，本文件把每条落成可验收的行为
 - 界面仅中文。不使用 i18n，不预留第二语言
-- 技术接入细节见 [`../../tech-spec-cn.md`](../../tech-spec-cn.md)：中式菜谱见「中式菜谱 HowToCook — 本地 stdio MCP」，西式与其他见「西式菜谱 RecipeWiki — 远程 MCP」与「西式菜谱 TheMealDB — REST API」，翻译见「对话 LLM」
+- 技术接入细节见 [`../tech-spec-cn.md`](../tech-spec-cn.md)：中式菜谱见「中式菜谱 HowToCook — 本地 stdio MCP」，西式与其他见「西式菜谱 RecipeWiki — 远程 MCP」与「西式菜谱 TheMealDB — REST API」，翻译见「对话 LLM」
 - 本项目用到能力：对话 LLM（只用于翻译）、三个菜谱来源。不使用图像、地图、天气、星座、宝可梦
 
 ## 「数据来源与翻译」

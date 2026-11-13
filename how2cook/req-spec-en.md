@@ -2,7 +2,7 @@
 
 - Based on `brd-en.md` in this folder. The BRD owns the scope; this file turns each item into verifiable behavior
 - UI is English only. No i18n; no second language is planned
-- Wiring details are in [`../../tech-spec-en.md`](../../tech-spec-en.md): Chinese recipes under "HowToCook — local stdio MCP", Western and other under "RecipeWiki — remote MCP" and "TheMealDB — REST API", translation under "Chat LLM"
+- Wiring details are in [`../tech-spec-en.md`](../tech-spec-en.md): Chinese recipes under "HowToCook — local stdio MCP", Western and other under "RecipeWiki — remote MCP" and "TheMealDB — REST API", translation under "Chat LLM"
 - Capabilities this project uses: the chat LLM (translation only) and the three recipe sources. No image, map, weather, zodiac, or Pokémon
 
 ## Data sources and translation
