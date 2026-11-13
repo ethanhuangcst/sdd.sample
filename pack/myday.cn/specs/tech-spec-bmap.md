@@ -3,8 +3,8 @@
 
 ##  1.原则
 - 在工作区根目录工作。不要参考其他项目。不要把代码或文档写到本工作区以外。
-- 工作区根目录只放两样：`specs/`，以及工程目录 `web/`。Next.js 代码只放在 `web/`。
-- 不做数据存储，不写 `data/`。
+- 工作区根目录放 `specs/` 和工程目录 `web/`；需要数据存储时，本地 JSON 只放工作区根目录的 `data/`，无数据库。Next.js 代码只放在 `web/`。
+- 本项目能力只有对话、图像、天气、星座、百度地图。不配置 Google Maps，不用宝可梦，不用路线查询。
 - 只安装必需依赖项，不安装 React Query、Zustand、RHF、Playwright。
 
 ## 2.技术栈
@@ -24,12 +24,10 @@
 ```env
 QUANZIL_API_KEY=
 QUANZIL_BASE_URL=https://quanzil.com/v1
-QUANZIL_CHAT_MODEL=gpt-6-astra
+QUANZIL_CHAT_MODEL=gpt-6.1-sol
 ```
 
 用 `openai` SDK，创建时传入上面的 Key 和 base URL。不要再设置 `OPENAI_API_KEY` 或 `OPENAI_BASE_URL`。用 `max_completion_tokens`，不用 `max_tokens`。`choices[0].message.content` 为空即失败。
-
-`gpt-6-astra` 会先把推理 token 计入 `max_completion_tokens`，再写 `choices[0].message.content`。需求提示词里的字数和字符数不设置这个上限。状态总结、行程、穿搭这三次对话都把 `max_completion_tokens` 设为 1200。`choices[0].message.content` 为空即失败，包括 `finish_reason` 为 `length`、推理用完上限、正文为空的情况。
 
 ### 图像
 
@@ -38,41 +36,38 @@ QUANZIL_IMAGE_MODEL=gemini-3.1-flash-lite-image
 QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent
 ```
 
-`POST` 该 URL。请求头 `Authorization: Bearer <QUANZIL_API_KEY>`。正文带 `generationConfig.responseModalities: ["IMAGE"]`。有照片时 `parts` 含文本和 `inlineData`。`mimeType` 用照片本身的类型：`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`。照片是小图：上传由用户控制，长边约 2048px 以内、文件 2MB 以内，应用不做缩图。生图请求加 75 秒超时，超时按该区域失败处理，不重试。1×1 图片会 400。不要设置 `imageConfig.imageSize`。结果在 `candidates[0].content.parts[].inlineData`。没有 `inlineData` 即失败。读不到照片就报错，禁止改成不带照片的请求。
+`POST` 该 URL。请求头 `Authorization: Bearer <QUANZIL_API_KEY>`。正文带 `generationConfig.responseModalities: ["IMAGE"]`。有照片时 `parts` 含文本和 `inlineData`。`mimeType` 用照片本身的类型：`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`。先把长边缩到约 1024px。1×1 图片会 400。不要设置 `imageConfig.imageSize`。结果在 `candidates[0].content.parts[].inlineData`。没有 `inlineData` 即失败。读不到照片就报错，禁止改成不带照片的请求。
 
-### Google Maps
+### 百度地图
 
 ```env
-GOOGLE_MAPS_API_KEY=
-GOOGLE_MAPS_GEOCODE_URL=https://maps.googleapis.com/maps/api/geocode/json
-GOOGLE_MAPS_PLACES_SEARCH_TEXT_URL=https://places.googleapis.com/v1/places:searchText
+BAIDUMAP_API_KEY=
+BAIDUMAP_GEOCODING_URL=https://api.map.baidu.com/geocoding/v3/
+BAIDUMAP_REVERSE_GEOCODING_URL=https://api.map.baidu.com/reverse_geocoding/v3/
+BAIDUMAP_PLACE_SEARCH_URL=https://api.map.baidu.com/place/v2/search
+BAIDUMAP_RET_COORDTYPE=gcj02ll
 ```
 
-- 地理编码：`GET ${GOOGLE_MAPS_GEOCODE_URL}?address={地址}&key=`。`status` 为 `OK` 才算成功。坐标是 WGS-84，顺序是纬度,经度。
-- 餐厅：`POST` searchText。请求头 `Content-Type: application/json`、`X-Goog-Api-Key`、`X-Goog-FieldMask: places.displayName,places.formattedAddress,places.location`
-- 正文是 `textQuery` 加 `locationBias.circle`。`circle` 不能省。半径 5000 米。只发这一次。
-- 名称和地址用这一次的返回。距离用返回坐标和已有坐标计算，不另发请求。不按行再请求详情。
-- 浏览器打开 `https://www.google.com/maps/dir/?api=1&destination=纬度,经度`。不加载 JS API。
-- Key 不放进浏览器，只在服务端使用。禁止 `NEXT_PUBLIC_*`。
+- 正向地理编码：`GET {BAIDUMAP_GEOCODING_URL}?address={地址}&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`。`status` 为 `0` 才算成功
+- 逆地理编码：`GET {BAIDUMAP_REVERSE_GEOCODING_URL}?location={纬度},{经度}&output=json&ak={KEY}&coordtype=gcj02ll&ret_coordtype={RET_COORDTYPE}`。城市名和 `adcode` 取自 `result.addressComponent`。省辖县或县级市的 `city` 可能为空，此时所在城市用 `district`
+- 周边餐饮：`GET {BAIDUMAP_PLACE_SEARCH_URL}?query={菜系}&tag=美食&location={纬度},{经度}&radius=5000&scope=2&page_size=20&filter=industry_type:cater|sort_name:distance|sort_rule:1&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`
+- 百度默认返回 BD-09 坐标；`ret_coordtype=gcj02ll` 返回国测局坐标。接口的 `location` 参数顺序是纬度,经度
+- 检索结果用 GCJ-02。发给 Open-Meteo 之前，用公开的 GCJ-02 转 WGS-84 迭代在本地换算，不安装坐标库。中国境外的坐标不必换算。百度不提供 WGS-84 输出
+- 只发上面这一次周边检索。名称、距离、地址、类型、电话用这一次的返回。距离取 `detail_info.distance`。不按行再请求详情
+- 浏览器打开 `https://api.map.baidu.com/marker?location={纬度},{经度}&title={店名}&content={地址}&output=html&coord_type=gcj02&src=webapp.myday.myday`。`coord_type=gcj02` 必传，否则位置偏移。不加载 JS API
+- Key 只放查询参数，只在服务端使用
 
 ### 时区
 
-地理编码成功后，从 `address_components` 里 `country` 的 `short_name` 映射 IANA 时区 id。不请求时区接口，不安装 `geo-tz`、`tz-lookup` 或同类包。
+正向地理编码和逆地理编码成功后，用逆地理编码返回的 `adcode` 映射 IANA 时区 id。`adcode` 是区县级码，前两位省份与下表的判断一致。不请求时区接口，不安装 `geo-tz`、`tz-lookup` 或同类包。
 
-| 国家短码 | IANA |
+| `adcode` 前缀 | IANA |
 | --- | --- |
-| TW | `Asia/Taipei` |
-| HK | `Asia/Hong_Kong` |
-| MO | `Asia/Macau` |
-| SG | `Asia/Singapore` |
-| JP | `Asia/Tokyo` |
-| KR | `Asia/Seoul` |
-| AU | `Australia/Sydney` |
-| GB | `Europe/London` |
-| FR | `Europe/Paris` |
-| DE | `Europe/Berlin` |
-| US | `America/Los_Angeles` |
-| 其他已成功 | `Asia/Taipei` |
+| 65 | `Asia/Urumqi` |
+| 81 | `Asia/Hong_Kong` |
+| 82 | `Asia/Macau` |
+| 71 | `Asia/Taipei` |
+| 其他已成功的结果 | `Asia/Shanghai` |
 
 - 用 `Intl.DateTimeFormat`，`timeZone` 设为上表的 IANA，算出该地点的当地日期和时间。不要用浏览器系统时区代替。不要用经度除以 15 估算。
 - 周岁里的「今天」用这个 IANA 的当地日历日期。未到今年生日则减一岁。
@@ -169,7 +164,7 @@ OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
 两条夹具测试通过后，在 `web/` 执行 `npm run dev`。在浏览器里只走一遍下面的路径。走通后，在回复里给出本地地址，然后停止。
 
 - 打开「介绍你自己」。不填任何项时「提交」为灰色且不能点击。
-- 填入姓名、性别、出生日期、今天在做什么、现在的心情、一张照片，以及「台北 士林」。照片用上面的 `specs/test-img.png`。
+- 填入姓名、性别、出生日期、今天在做什么、现在的心情、一张照片，以及「上海 爱琴海」。照片用上面的 `specs/test-img.png`。
 - 点击一次「提交」。进入「规划我的一天」。能看到你好和姓名、年龄、星座、所在城市、天气现象、温度、天气图标、一句状态总结、今日行程、穿搭文字和穿搭图。
-- 未输入菜系时不查找。输入一次菜系后出现餐厅列表，每行有名称、距离、地址。点击一行，新标签打开 Google 地图。
+- 未输入菜系时不查找。输入一次菜系后出现餐厅列表，每行有名称、距离、地址、类型、电话。点击一行，新标签打开百度地图。
 - 这一遍走通后停止。不再改布局。只有这一遍里改了代码时，才再跑那两条夹具测试。「重新规划」由夹具覆盖，这一遍不再点它。

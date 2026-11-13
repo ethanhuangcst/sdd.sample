@@ -24,12 +24,12 @@
 ```env
 QUANZIL_API_KEY=
 QUANZIL_BASE_URL=https://quanzil.com/v1
-QUANZIL_CHAT_MODEL=gpt-6-astra
+QUANZIL_CHAT_MODEL=gpt-6.1-sol
 ```
 
 Use the `openai` SDK with the key and base URL above. Do not set `OPENAI_API_KEY` or `OPENAI_BASE_URL`. Use `max_completion_tokens`, not `max_tokens`. An empty `choices[0].message.content` counts as failure.
 
-`gpt-6-astra` counts reasoning tokens inside `max_completion_tokens` before it writes `choices[0].message.content`. The word and character limits in the requirement prompts do not set this cap. Set `max_completion_tokens` to 1200 for the status summary, the itinerary, and the outfit text. An empty `choices[0].message.content` is failure, including when `finish_reason` is `length` because reasoning used the whole cap.
+`gpt-6.1-sol` counts reasoning tokens inside `max_completion_tokens` before it writes `choices[0].message.content`. The word and character limits in the requirement prompts do not set this cap. Set `max_completion_tokens` to 1200 for the status summary, the itinerary, and the outfit text. An empty `choices[0].message.content` is failure, including when `finish_reason` is `length` because reasoning used the whole cap.
 
 ### Image
 
@@ -40,35 +40,38 @@ QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:
 
 `POST` that URL. Header `Authorization: Bearer <QUANZIL_API_KEY>`. Body includes `generationConfig.responseModalities: ["IMAGE"]`. With a photo, `parts` include text and `inlineData`. Use the photo MIME type. The page-1 photo is small: the user controls the upload, long edge within about 2048px and file within 2MB. The app does not scale images. Wrap the image POST in a 75-second timeout; a timeout fails that block, no retry. A 1×1 image returns 400. Do not set `imageConfig.imageSize`. The result is in `candidates[0].content.parts[].inlineData`. Missing `inlineData` counts as failure. Do not drop the photo from the request.
 
-### Baidu Maps
+### Google Maps
 
 ```env
-BAIDUMAP_API_KEY=
-BAIDUMAP_GEOCODING_URL=https://api.map.baidu.com/geocoding/v3/
-BAIDUMAP_REVERSE_GEOCODING_URL=https://api.map.baidu.com/reverse_geocoding/v3/
-BAIDUMAP_PLACE_SEARCH_URL=https://api.map.baidu.com/place/v2/search
-BAIDUMAP_RET_COORDTYPE=gcj02ll
+GOOGLE_MAPS_API_KEY=
+GOOGLE_MAPS_GEOCODE_URL=https://maps.googleapis.com/maps/api/geocode/json
+GOOGLE_MAPS_PLACES_SEARCH_TEXT_URL=https://places.googleapis.com/v1/places:searchText
 ```
 
-- Geocode: `GET {BAIDUMAP_GEOCODING_URL}?address={address}&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`. Success is `status` `0`.
-- Reverse geocode: `GET {BAIDUMAP_REVERSE_GEOCODING_URL}?location={lat},{lng}&output=json&ak={KEY}&coordtype=gcj02ll&ret_coordtype={RET_COORDTYPE}`. City name and `adcode` come from `result.addressComponent`. `city` may be empty for a county-level city; use `district` then.
-- Restaurants: `GET {BAIDUMAP_PLACE_SEARCH_URL}?query={cuisine}&tag=美食&location={lat},{lng}&radius=5000&scope=2&page_size=20&filter=industry_type:cater|sort_name:distance|sort_rule:1&output=json&ak={KEY}&ret_coordtype={RET_COORDTYPE}`
-- Baidu returns BD-09 by default; `ret_coordtype=gcj02ll` gives GCJ-02. The `location` parameter order is lat,lng.
-- Search results use GCJ-02. Convert to WGS-84 before Open-Meteo, using local iteration; do not add a coordinate library. Baidu cannot output WGS-84.
-- One around search only. Use name, distance (`detail_info.distance`), address, type, and phone from that response. No per-row detail calls.
-- Browser link: `https://api.map.baidu.com/marker?location={lat},{lng}&title={name}&content={address}&output=html&coord_type=gcj02&src=webapp.myday.myday`. Send `coord_type=gcj02`, otherwise the pin is offset. No JS API. Keep the key server-side only.
+- Geocode: `GET ${GOOGLE_MAPS_GEOCODE_URL}?address={address}&key=`. Success when `status` is `OK`. WGS-84, order lat,lng.
+- Restaurants: `POST` searchText. Headers `Content-Type: application/json`, `X-Goog-Api-Key`, `X-Goog-FieldMask: places.displayName,places.formattedAddress,places.location`
+- Body: `textQuery` plus `locationBias.circle`. `circle` is required. Radius 5000 m. One call only.
+- Compute distance from returned coordinates. No per-row detail calls.
+- Browser link: `https://www.google.com/maps/dir/?api=1&destination=lat,lng`. No JS API. Keep the key server-side only. No `NEXT_PUBLIC_*`.
 
 ### Time zone
 
-After the geocode and reverse geocode succeed, map the `adcode` returned by the reverse geocode to an IANA time zone id. The `adcode` is county-level; the province part (first two digits) drives the table below. Do not call a time zone API. Do not install `geo-tz`, `tz-lookup`, or similar packages.
+After geocoding succeeds, map the `country` `short_name` from `address_components` to an IANA time zone id. Do not call a time zone API. Do not install `geo-tz`, `tz-lookup`, or similar packages.
 
-| `adcode` prefix | IANA |
+| Country code | IANA |
 | --- | --- |
-| 65 | `Asia/Urumqi` |
-| 81 | `Asia/Hong_Kong` |
-| 82 | `Asia/Macau` |
-| 71 | `Asia/Taipei` |
-| Any other successful result | `Asia/Shanghai` |
+| TW | `Asia/Taipei` |
+| HK | `Asia/Hong_Kong` |
+| MO | `Asia/Macau` |
+| SG | `Asia/Singapore` |
+| JP | `Asia/Tokyo` |
+| KR | `Asia/Seoul` |
+| AU | `Australia/Sydney` |
+| GB | `Europe/London` |
+| FR | `Europe/Paris` |
+| DE | `Europe/Berlin` |
+| US | `America/Los_Angeles` |
+| Any other successful result | `Asia/Taipei` |
 
 - Use `Intl.DateTimeFormat` with `timeZone` set to that IANA id for local date and time at the place. Do not use the browser system time zone instead. Do not estimate from longitude divided by 15.
 - For age, "today" uses the local calendar date in that IANA id. Subtract one year if this year's birthday has not occurred yet.
