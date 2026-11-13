@@ -123,6 +123,31 @@ QUANZIL_IMAGE_URL=https://quanzil.com/v1beta/models/gemini-3.1-flash-lite-image:
 
 
 
+### 城市地理编码 — Open-Meteo
+
+#### 环境配置
+
+```env
+GEOCODING_BASE_URL=https://geocoding-api.open-meteo.com/v1
+```
+
+无需 Key。
+
+#### 请求
+
+`GET {GEOCODING_BASE_URL}/search?name={城市名}&count=5&language=zh`。2026-11-13 实测：`上海` 返回 `latitude 31.22`、`longitude 121.46`、`timezone Asia/Shanghai`、`country 中国`、`admin1 上海市`、`population`；`乌鲁木齐` 返回 `timezone Asia/Urumqi`。一次调用同时得到经纬度与 IANA 时区，喂给星座与八字 MCP。
+
+#### 性能要求
+
+- 用户停止输入后再发一次；不要每个按键发一次。
+- 结果由用户从候选列表点选，不要自动替用户选城市。
+
+#### 关键陷阱
+
+- 同名城市会返回多条（浙江也有「上海」）：候选列表展示 `admin1` 与 `country` 供用户消歧，`population` 最高的排首位。
+- `language` 参数决定返回名称的语言，与界面语言保持一致。
+- 不要用不含时区字段的地理编码源（如 Nominatim）替代：时区是星座与八字链路的必需输出。
+
 ### 星座 MCP
 
 #### 环境配置

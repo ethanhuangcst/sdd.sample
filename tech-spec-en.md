@@ -251,25 +251,34 @@ GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.locatio
 - Mainland China is the `country` short code in the geocode result: `CN` is mainland China; `HK`, `MO`, `TW`, and any other country are not. Reverse geocode a browser location once; do not use a lat/lng bounding box.
 - The browser opens `https://www.google.com/maps/dir/?api=1&destination=latitude,longitude`. Do not load the JS API.
 
-### Weather
+### Weather and city coordinates — Open-Meteo
+
+One provider serves two capabilities: weather forecast and city geocoding. Neither needs a key.
 
 #### Environment
 
 ```env
 OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
+GEOCODING_BASE_URL=https://geocoding-api.open-meteo.com/v1
 ```
 
 #### Request
 
-`GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`. No key; coordinates are WGS-84. Tested 2026-10-13: the response `current` contains all four fields. The `current` fields and `timezone` (`auto` or the project's IANA id) follow that project's requirements; the minimum is `temperature_2m` and `weather_code`.
+Weather forecast: `GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`. Coordinates are WGS-84. Tested 2026-10-13: the response `current` contains all four fields. The `current` fields and `timezone` (`auto` or the project's IANA id) follow that project's requirements; the minimum is `temperature_2m` and `weather_code`.
+
+City coordinate search: `GET {GEOCODING_BASE_URL}/search?name={city}&count=5&language={language}`. Tested 2026-11-13: `上海` returned `latitude 31.22`, `longitude 121.46`, `timezone Asia/Shanghai`, `country 中国`, `admin1 上海市`, and `population`; `乌鲁木齐` returned `timezone Asia/Urumqi`. One call yields coordinates and the IANA timezone together.
 
 #### Performance
 
 - Send one forecast with the coordinates already in hand; do not locate the user again for it.
+- City search is triggered by user input; the user picks from the candidate list — never auto-select a city for them.
 
 #### Pitfalls
 
 - `weather_code` is a WMO code; map it to copy in the target language before display. Never show the raw code or a description in the wrong language.
+- Same-named cities return multiple entries (Zhejiang also has 「上海」): the candidate list shows `admin1` and `country` for disambiguation, with the highest `population` first.
+- The `language` parameter decides the language of returned names; keep it aligned with the UI language.
+- Do not substitute a geocoding source without a timezone field (e.g. Nominatim): the timezone is a required output for the zodiac and bazi chains.
 
 ### Zodiac MCP
 
@@ -510,6 +519,36 @@ The response is `{"meals":[…]}` with `idMeal`, `strMeal`, `strCategory`, `strA
 
 - The source text is English. When the target language is not English, translate before display; translation caching and labeling rules come from that project's requirements.
 - `filter.php` returns a short list only (no steps or ingredients); use `lookup.php` for details.
+
+### Email via Resend
+
+#### Environment
+
+```env
+RESEND_API_KEY=
+RESEND_HOST=api.resend.com
+RESEND_BASE_URL=https://api.resend.com
+RESEND_KEY_MGMT_SITE=https://resend.com/api-keys
+```
+
+`RESEND_KEY_MGMT_SITE` is registry metadata for the console URL, not a runtime variable. Wire this only when the project requirements name sending email.
+
+#### Request
+
+This section follows the official documentation; it has not been tested (no usable key existed when this section was written). The first project that wires it should test it and append the findings.
+
+- Send an email: `POST {RESEND_BASE_URL}/emails` with headers `Authorization: Bearer <RESEND_API_KEY>` and `Content-Type: application/json`. The body needs at least `from`, `to`, `subject`, and `html` (or `text`); `to` takes one address or an array. Success returns HTTP 200 with `{"id":"…"}`.
+- Test mode without a verified domain: `from` must be `onboarding@resend.dev`, and recipients are limited to the account owner's own email. To use a real sender domain, verify the domain and its DNS records in the Resend console first.
+- An invalid recipient fails the whole request (HTTP 422); there is no partial success.
+
+#### Performance
+
+- Keep email sending off the critical path the user waits on; how the send result is shown comes from that project's requirements.
+
+#### Pitfalls
+
+- Register a separate Resend account and key per (demo) project; do not share quotas.
+- The API key stays on the server; sending from an unverified `from` address to other people's mailboxes is rejected.
 
 ## 4. Install
 

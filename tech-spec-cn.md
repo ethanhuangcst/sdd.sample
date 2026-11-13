@@ -252,25 +252,34 @@ GOOGLE_MAPS_FIELD_MASK=places.displayName,places.formattedAddress,places.locatio
 - 是否在中国大陆看地理编码结果里 `country` 的短码：`CN` 是中国大陆，`HK`、`MO`、`TW` 和其他国家不是；浏览器坐标先做一次逆地理编码，不写经纬度方框。
 - 浏览器打开 `https://www.google.com/maps/dir/?api=1&destination=纬度,经度`。
 
-### 天气
+### 天气与城市坐标 — Open-Meteo
+
+同一提供方提供天气预报与城市地理编码两个能力，都无需 Key。
 
 #### 环境配置
 
 ```env
 OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
+GEOCODING_BASE_URL=https://geocoding-api.open-meteo.com/v1
 ```
 
 #### 请求
 
-`GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`。无需 Key，坐标为 WGS-84。2026-10-13 实测返回含上述四项的 `current`。`current` 的参数与 `timezone`（`auto` 或项目得到的 IANA）按该项目需求取用，最少需要 `temperature_2m` 与 `weather_code`。
+天气预报：`GET {OPEN_METEO_BASE_URL}/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`。坐标为 WGS-84。2026-10-13 实测返回含上述四项的 `current`。`current` 的参数与 `timezone`（`auto` 或项目得到的 IANA）按该项目需求取用，最少需要 `temperature_2m` 与 `weather_code`。
+
+城市坐标检索：`GET {GEOCODING_BASE_URL}/search?name={城市名}&count=5&language={语言}`。2026-11-13 实测：`上海` 返回 `latitude 31.22`、`longitude 121.46`、`timezone Asia/Shanghai`、`country 中国`、`admin1 上海市`、`population`；`乌鲁木齐` 返回 `timezone Asia/Urumqi`。一次调用同时得到经纬度与 IANA 时区。
 
 #### 性能要求
 
-- 用已经得到的坐标发一次预报，不要为这次预报重新定位。
+- 预报用已经得到的坐标发一次，不要为这次预报重新定位。
+- 城市检索由用户输入触发；结果由用户从候选列表点选，不要自动替用户选城市。
 
 #### 关键陷阱
 
 - `weather_code` 是 WMO 代码，展示前映射为目标语言文案；禁止把裸代码或英文描述直接给用户。
+- 同名城市会返回多条（浙江也有「上海」）：候选列表展示 `admin1` 与 `country` 供用户消歧，`population` 最高的排首位。
+- `language` 参数决定返回名称的语言，与界面语言保持一致。
+- 不要用不含时区字段的地理编码源（如 Nominatim）替代：时区是星座与八字链路的必需输出。
 
 ### 星座 MCP
 
@@ -511,6 +520,36 @@ THEMEALDB_BASE_URL=https://www.themealdb.com/api/json/v1/1
 
 - 原文是英文。目标语言不是英文时先翻译再展示；翻译缓存与标注规则由该项目需求决定。
 - `filter.php` 只返回缩略列表（无步骤与食材），详情用 `lookup.php`。
+
+### 邮件发送 Resend
+
+#### 环境配置
+
+```env
+RESEND_API_KEY=
+RESEND_HOST=api.resend.com
+RESEND_BASE_URL=https://api.resend.com
+RESEND_KEY_MGMT_SITE=https://resend.com/api-keys
+```
+
+`RESEND_KEY_MGMT_SITE` 只是登记用的控制台地址，不进运行时。项目需求写明发邮件时才接入。
+
+#### 请求
+
+本节按官方文档整理，尚未实测（写本节时没有可用 Key）；首个接入项目先实测再回填结论。
+
+- 发送邮件：`POST {RESEND_BASE_URL}/emails`，请求头 `Authorization: Bearer <RESEND_API_KEY>` 与 `Content-Type: application/json`。正文至少含 `from`、`to`、`subject`、`html`（或 `text`）；`to` 可以是单个地址或数组。成功返回 HTTP 200 与 `{"id":"…"}`。
+- 未验证域名的测试模式：`from` 只能用 `onboarding@resend.dev`，且收件人只能是注册账号自己的邮箱；要换真实发件域名，先在 Resend 控制台验证域名与 DNS 记录。
+- 收件人地址无效时整个请求失败（HTTP 422），没有部分成功。
+
+#### 性能要求
+
+- 邮件发送不放在用户等待的关键路径上；发送结果的展示方式由该项目需求决定。
+
+#### 关键陷阱
+
+- 每个（演示）项目注册独立的 Resend 账号与 Key，不共享配额。
+- API Key 只在服务端使用；`from` 地址未验证域名就发往他人邮箱会被拒绝。
 
 ## 4.安装
 
