@@ -126,19 +126,19 @@ OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
 
 ### 第一步：安装依赖项
 
-- 尚无 `web/package.json` 时，在工作区根目录执行下面这一条。`web/` 不存在或是空目录都可以。不要停在创建工具的提问上。中国大陆、香港、澳门：
+- 依赖一律从 npmmirror 镜像安装：默认 npmjs 源在大陆网络不可达，直接用镜像，不要先试默认源、失败后再换。
+- 尚无 `web/package.json` 时，在工作区根目录执行下面这一条。`web/` 不存在或是空目录都可以。不要停在创建工具的提问上：
   ```
   npm_config_registry=https://registry.npmmirror.com npx create-next-app@16 web --yes --ts --tailwind --eslint --app --no-src-dir --use-npm
   ```
-  其他地区：同一条命令，不设置 `npm_config_registry`。
   这条命令会自己安装 Next.js 依赖。不要在它之后再无目的地执行 `npm install`。
-- 然后在 `web/` 安装本项目额外的包。中国大陆、香港、澳门加上 `--registry=https://registry.npmmirror.com`：
+- 然后在 `web/` 安装本项目额外的包：
   ```
-  npm install openai
-  npm install -D vitest jsdom @testing-library/react @testing-library/jest-dom
+  npm install --registry=https://registry.npmmirror.com openai
+  npm install --registry=https://registry.npmmirror.com -D vitest jsdom @testing-library/react @testing-library/jest-dom
   ```
 
-- 已有 `web/package.json` 和 `web/package-lock.json` 时，不要再跑 `create-next-app`。在 `web/` 执行 `npm ci`。不要用 `npm install` 改写已有 lockfile。lockfile 里还没有上面这些包时，再按那两条安装命令补上。
+- 已有 `web/package.json` 和 `web/package-lock.json` 时，不要再跑 `create-next-app`。在 `web/` 执行 `npm ci --registry=https://registry.npmmirror.com`。不要用 `npm install` 改写已有 lockfile。lockfile 里还没有上面这些包时，再按上一条安装命令补上。
 - peer 依赖失败时，给失败的那条 `npm install` 加上 `--legacy-peer-deps` 再装一次。不要改 `@types/node` 的版本。
 
 ### 第二步：生成密钥

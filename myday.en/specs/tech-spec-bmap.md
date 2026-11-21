@@ -125,19 +125,19 @@ Do not call a horoscope service and do not install a zodiac package. Use Gregori
 
 ### Step 1: Dependencies
 
-- If `web/package.json` is missing, from the workspace root run (empty or missing `web/` is OK). Do not pause for scaffold prompts. Mainland China, Hong Kong, Macau:
+- Always install from the npmmirror registry: the default npmjs registry is unreachable from mainland networks — go straight to the mirror; do not try the default registry first and switch after a failure.
+- If `web/package.json` is missing, from the workspace root run (empty or missing `web/` is OK). Do not pause for scaffold prompts:
   ```
   npm_config_registry=https://registry.npmmirror.com npx create-next-app@16 web --yes --ts --tailwind --eslint --app --no-src-dir --use-npm
   ```
-  Other regions: same command without `npm_config_registry`.
   Do not run an unnecessary `npm install` after this.
-- Then in `web/`, add packages. In CN/HK/MO add `--registry=https://registry.npmmirror.com`:
+- Then in `web/`, add packages:
   ```
-  npm install openai
-  npm install -D vitest jsdom @testing-library/react @testing-library/jest-dom
+  npm install --registry=https://registry.npmmirror.com openai
+  npm install --registry=https://registry.npmmirror.com -D vitest jsdom @testing-library/react @testing-library/jest-dom
   ```
 
-- If `web/package.json` and lockfile exist, run `npm ci` in `web/` instead of `create-next-app`. Add missing packages with the commands above.
+- If `web/package.json` and lockfile exist, run `npm ci --registry=https://registry.npmmirror.com` in `web/` instead of `create-next-app`. Add missing packages with the commands above.
 - On peer dependency failure, retry that `npm install` with `--legacy-peer-deps`. Do not change `@types/node`.
 
 ### Step 2: Secrets
